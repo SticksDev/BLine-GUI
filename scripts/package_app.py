@@ -8,6 +8,21 @@ import sys
 from pathlib import Path
 
 
+def _preferred_cli_args(executable: str, spec_file: Path) -> list[str]:
+    """Return the correct arguments for the installed pyside6-deploy."""
+    help_cmd = [executable, "--help"]
+    help_proc = subprocess.run(
+        help_cmd,
+        capture_output=True,
+        text=True,
+    )
+    help_text = (help_proc.stdout or "") + (help_proc.stderr or "")
+    normalized = help_text.lower()
+    if "--config-file" in normalized or "-c config_file" in normalized:
+        return ["-c", str(spec_file)]
+    return ["--spec", str(spec_file)]
+
+
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[1]
     spec_file = repo_root / "pysidedeploy.spec"
@@ -18,9 +33,21 @@ def main() -> int:
         print(f"[package] Spec file not found: {spec_file}", file=sys.stderr)
         return 1
 
-    cmd = ["pyside6-deploy", "--spec", str(spec_file)]
+    executable = "pyside6-deploy"
+    try:
+        cli_args = _preferred_cli_args(executable, spec_file)
+    except FileNotFoundError:
+        print(f"[package] {executable!r} not found on PATH", file=sys.stderr)
+        return 1
+
+    cmd = [executable, *cli_args]
     print(f"[package] Running: {' '.join(cmd)}")
-    subprocess.run(cmd, check=True, cwd=repo_root)
+    try:
+        subprocess.run(cmd, check=True, cwd=repo_root)
+    except FileNotFoundError:
+        print(f"[package] {executable!r} not found on PATH", file=sys.stderr)
+        return 1
+
     print(f"[package] Artifacts available under: {build_dir}")
     return 0
 
