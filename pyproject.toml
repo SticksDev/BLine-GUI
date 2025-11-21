@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "frc-ptp-gui"
+version = "0.1.0"
+description = "A PySide6 GUI for planning and simulating FRC robot paths."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "FRC PTP Maintainers" }]
+dependencies = [
+    "PySide6>=6.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.8.0",
+    "mypy>=1.11.0",
+    "pytest>=8.2.0",
+    "ruff>=0.6.5",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["."]
+extend-exclude = ["assets_rc.py"]
+
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "F82"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+strict_optional = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+
