@@ -13,7 +13,7 @@ input_file = main.py
 exec_directory = build
 
 # path to the project file relative to project_dir
-project_file = 
+project_file = pyproject.toml
 
 # application icon
 icon = assets/rebel_logo.png
@@ -21,7 +21,7 @@ icon = assets/rebel_logo.png
 [python]
 
 # python path (leave empty to use the current interpreter)
-python_path = /Users/edan/FRC/FRC-PTP-GUI/.venv/bin/python3.13
+python_path = 
 
 # python packages to install
 packages = Nuitka==2.6.8

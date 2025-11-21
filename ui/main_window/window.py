@@ -222,13 +222,11 @@ class MainWindow(WindowEventMixin, QMainWindow):
     def _show_delete_path_dialog(self):
         """Show a dialog for selecting and deleting paths"""
         if not self.project_manager.has_valid_project():
-
             QMessageBox.information(self, "No Project", "Please open a project first.")
             return
 
         files = self.project_manager.list_paths()
         if not files:
-
             QMessageBox.information(self, "No Paths", "No paths found to delete.")
             return
 
@@ -671,7 +669,6 @@ class MainWindow(WindowEventMixin, QMainWindow):
                 if os.path.exists(
                     os.path.join(self.project_manager.project_dir, "paths", filename)
                 ):
-
                     QMessageBox.warning(
                         self,
                         "File Exists",
@@ -716,12 +713,10 @@ class MainWindow(WindowEventMixin, QMainWindow):
     def _action_rename_path(self):
         """Rename the currently open path file"""
         if not self.project_manager.has_valid_project():
-
             QMessageBox.information(self, "No Project", "Please open a project first.")
             return
 
         if not self.project_manager.current_path_file:
-
             QMessageBox.information(self, "No Path", "No path is currently open to rename.")
             return
 
@@ -747,7 +742,6 @@ class MainWindow(WindowEventMixin, QMainWindow):
                 if os.path.exists(
                     os.path.join(self.project_manager.project_dir, "paths", new_filename)
                 ):
-
                     QMessageBox.warning(
                         self,
                         "File Exists",
@@ -775,13 +769,11 @@ class MainWindow(WindowEventMixin, QMainWindow):
                     self._update_current_path_display()
                     self._populate_load_path_menu()
 
-
                     QMessageBox.information(
                         self, "Path Renamed", f"Successfully renamed to '{new_filename}'"
                     )
 
                 except Exception as e:
-
                     QMessageBox.critical(self, "Rename Failed", f"Failed to rename path: {str(e)}")
 
     def _delete_paths_from_dialog(self, checkboxes: dict, dialog: QDialog):
@@ -790,7 +782,6 @@ class MainWindow(WindowEventMixin, QMainWindow):
         selected_paths = [fname for fname, cb in checkboxes.items() if cb.isChecked()]
 
         if not selected_paths:
-
             QMessageBox.information(
                 self, "No Selection", "Please select at least one path to delete."
             )
@@ -958,7 +949,6 @@ class MainWindow(WindowEventMixin, QMainWindow):
         """Load the selected path from the path selection dialog"""
         current_item = path_list.currentItem()
         if not current_item:
-
             QMessageBox.warning(self, "No Selection", "Please select a path to load.")
             return
 
@@ -971,7 +961,6 @@ class MainWindow(WindowEventMixin, QMainWindow):
             self._update_current_path_display()
             dialog.accept()
         else:
-
             QMessageBox.critical(self, "Error", f"Failed to load path '{selected_path}'.")
 
     def _set_path_model(self, path: Path):
