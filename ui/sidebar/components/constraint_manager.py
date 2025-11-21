@@ -3,7 +3,16 @@
 from typing import Dict, Optional, Tuple, Any, List
 import math
 from PySide6.QtCore import QObject, Signal, QTimer, Qt, QEvent
-from PySide6.QtWidgets import QWidget, QLabel, QDoubleSpinBox, QVBoxLayout, QFormLayout, QPushButton, QHBoxLayout, QSizePolicy
+from PySide6.QtWidgets import (
+    QWidget,
+    QLabel,
+    QDoubleSpinBox,
+    QVBoxLayout,
+    QFormLayout,
+    QPushButton,
+    QHBoxLayout,
+    QSizePolicy,
+)
 from PySide6.QtGui import QCursor, QMouseEvent, QIcon
 from PySide6.QtCore import QSize
 from models.path_model import Path, RangedConstraint
@@ -13,7 +22,7 @@ from ..utils import SPINNER_METADATA, PATH_CONSTRAINT_KEYS, NON_RANGED_CONSTRAIN
 
 class ConstraintManager(QObject):
     """Manages path constraints and their UI representations including range sliders."""
-    
+
     # Signals
     constraintAdded = Signal(str, float)  # key, value
     constraintRemoved = Signal(str)  # key
@@ -22,11 +31,11 @@ class ConstraintManager(QObject):
     # Undo/redo coordination signals (forwarded by Sidebar)
     aboutToChange = Signal(str)
     userActionOccurred = Signal(str)
-    
+
     # Preview overlay signals
     constraintRangePreviewRequested = Signal(str, int, int)  # key, start_ordinal, end_ordinal
     constraintRangePreviewCleared = Signal()
-    
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.path = None  # type: Optional[Path]
@@ -41,15 +50,15 @@ class ConstraintManager(QObject):
         # Map of constraint key -> field container used in constraints layout
         self._constraint_field_containers = {}
         # Track previous slider values to detect and block overlapping moves
-        self._slider_prev_values: Dict[RangeSlider, Tuple[int,int]] = {}
+        self._slider_prev_values: Dict[RangeSlider, Tuple[int, int]] = {}
         self._enforcing_slider_constraints: bool = False
         # Unique id assignment for ranged constraint instances to survive deep copies
         self._rc_uid_seq: int = 1
-        
+
     def set_path(self, path: Path):
         """Set the path to manage constraints for."""
         self.path = path
-        
+
     def get_default_value(self, key: str) -> float:
         """Get default value for a constraint from config or metadata."""
         cfg_default = None
@@ -58,24 +67,24 @@ class ConstraintManager(QObject):
                 cfg_default = self.project_manager.get_default_optional_value(key)
         except Exception:
             cfg_default = None
-            
+
         if cfg_default is not None:
             return float(cfg_default)
-            
+
         # Fall back to metadata default
         meta = SPINNER_METADATA.get(key, {})
-        range_min, _ = meta.get('range', (0, 99999))
+        range_min, _ = meta.get("range", (0, 99999))
         return float(range_min)
-        
+
     def add_constraint(self, key: str, value: Optional[float] = None) -> bool:
         """Add a path-level constraint.
 
         For ranged-capable constraints, this will APPEND a new ranged instance instead of
         replacing existing ones so multiple instances of the same constraint key may exist.
         """
-        if self.path is None or not hasattr(self.path, 'constraints'):
+        if self.path is None or not hasattr(self.path, "constraints"):
             return False
-            
+
         if value is None:
             value = self.get_default_value(key)
         # For non-ranged keys, store directly on flat constraints
@@ -86,7 +95,11 @@ class ConstraintManager(QObject):
                 pass
             # Remove any stray ranged constraints of same key (defensive)
             try:
-                self.path.ranged_constraints = [rc for rc in (getattr(self.path, 'ranged_constraints', []) or []) if rc.key != key]
+                self.path.ranged_constraints = [
+                    rc
+                    for rc in (getattr(self.path, "ranged_constraints", []) or [])
+                    if rc.key != key
+                ]
             except Exception:
                 pass
         else:
@@ -95,17 +108,24 @@ class ConstraintManager(QObject):
                 _domain, count = self.get_domain_info_for_key(key)
                 total = int(count) if int(count) > 0 else 1
                 try:
-                    existing_for_key = [rc for rc in (getattr(self.path, 'ranged_constraints', []) or []) if getattr(rc, 'key', None) == key]
+                    existing_for_key = [
+                        rc
+                        for rc in (getattr(self.path, "ranged_constraints", []) or [])
+                        if getattr(rc, "key", None) == key
+                    ]
                 except Exception:
                     existing_for_key = []
-                if not hasattr(self.path, 'ranged_constraints') or self.path.ranged_constraints is None:
+                if (
+                    not hasattr(self.path, "ranged_constraints")
+                    or self.path.ranged_constraints is None
+                ):
                     self.path.ranged_constraints = []
                 # Compute occupied unit ordinals from existing ranges (inclusive model ordinals)
                 occupied_units = set()
                 for rc in existing_for_key:
                     try:
-                        l = int(getattr(rc, 'start_ordinal', 1))
-                        h = int(getattr(rc, 'end_ordinal', total))
+                        l = int(getattr(rc, "start_ordinal", 1))
+                        h = int(getattr(rc, "end_ordinal", total))
                         l = max(1, min(l, total))
                         h = max(1, min(h, total))
                         if h < l:
@@ -122,8 +142,8 @@ class ConstraintManager(QObject):
                     largest_bounds = (1, 1)
                     for rc in existing_for_key:
                         try:
-                            l0 = int(getattr(rc, 'start_ordinal', 1))
-                            h0 = int(getattr(rc, 'end_ordinal', total))
+                            l0 = int(getattr(rc, "start_ordinal", 1))
+                            h0 = int(getattr(rc, "end_ordinal", total))
                             l0 = max(1, min(l0, total))
                             h0 = max(1, min(h0, total))
                             if h0 < l0:
@@ -150,7 +170,12 @@ class ConstraintManager(QObject):
                     except Exception:
                         pass
                     # Place the new constraint in the right half
-                    new_rc = RangedConstraint(key=key, value=value, start_ordinal=int(left_end + 1), end_ordinal=int(h_end))
+                    new_rc = RangedConstraint(
+                        key=key,
+                        value=value,
+                        start_ordinal=int(left_end + 1),
+                        end_ordinal=int(h_end),
+                    )
                     self.path.ranged_constraints.append(new_rc)
                     # Clear flat value storage for ranged keys and emit
                     try:
@@ -180,13 +205,13 @@ class ConstraintManager(QObject):
                 setattr(self.path.constraints, key, None)
             except Exception:
                 pass
-            
+
         self.constraintAdded.emit(key, value)
         return True
 
     def remove_constraint(self, key: str) -> bool:
         """Remove a path-level constraint."""
-        if self.path is None or not hasattr(self.path, 'constraints'):
+        if self.path is None or not hasattr(self.path, "constraints"):
             return False
 
         if key in NON_RANGED_CONSTRAINT_KEYS:
@@ -199,7 +224,11 @@ class ConstraintManager(QObject):
             return True
         # Ranged-capable key
         try:
-            ranged_list = [rc for rc in (getattr(self.path, 'ranged_constraints', []) or []) if getattr(rc, 'key', None) == key]
+            ranged_list = [
+                rc
+                for rc in (getattr(self.path, "ranged_constraints", []) or [])
+                if getattr(rc, "key", None) == key
+            ]
         except Exception:
             ranged_list = []
         if not ranged_list:
@@ -219,14 +248,22 @@ class ConstraintManager(QObject):
             # Remove only the FIRST instance (top) and keep others
             first = ranged_list[0]
             try:
-                self.path.ranged_constraints = [rc for rc in (getattr(self.path, 'ranged_constraints', []) or []) if rc is not first]
+                self.path.ranged_constraints = [
+                    rc
+                    for rc in (getattr(self.path, "ranged_constraints", []) or [])
+                    if rc is not first
+                ]
             except Exception:
                 pass
             # Do NOT emit full removal; UI refresh will rebuild remaining instances
             return True
         # Single instance -> full removal
         try:
-            self.path.ranged_constraints = [rc for rc in (getattr(self.path, 'ranged_constraints', []) or []) if getattr(rc, 'key', None) != key]
+            self.path.ranged_constraints = [
+                rc
+                for rc in (getattr(self.path, "ranged_constraints", []) or [])
+                if getattr(rc, "key", None) != key
+            ]
         except Exception:
             pass
         try:
@@ -265,10 +302,10 @@ class ConstraintManager(QObject):
                 container.setVisible(False)
             except Exception:
                 pass
-        
+
     def update_constraint_value(self, key: str, value: float):
         """Update the value of a constraint."""
-        if self.path is None or not hasattr(self.path, 'constraints'):
+        if self.path is None or not hasattr(self.path, "constraints"):
             return
         if key in NON_RANGED_CONSTRAINT_KEYS:
             # Direct flat update
@@ -280,7 +317,11 @@ class ConstraintManager(QObject):
             # Update ranged constraints for this key ONLY if a single instance exists.
             # (When multiple instances exist they have dedicated spin boxes.)
             try:
-                matching = [rc for rc in (getattr(self.path, 'ranged_constraints', []) or []) if getattr(rc, 'key', None) == key]
+                matching = [
+                    rc
+                    for rc in (getattr(self.path, "ranged_constraints", []) or [])
+                    if getattr(rc, "key", None) == key
+                ]
                 if len(matching) == 1:
                     rc = matching[0]
                     try:
@@ -301,41 +342,51 @@ class ConstraintManager(QObject):
                     pass
             except Exception:
                 pass
-            
+
         self.constraintValueChanged.emit(key, value)
-        
+
     def get_domain_info_for_key(self, key: str) -> Tuple[str, int]:
         """Return (domain_type, count) for the given key.
         domain_type in {"translation", "rotation"}.
         """
         if self.path is None:
             return "translation", 0
-            
+
         if key in ("max_velocity_meters_per_sec", "max_acceleration_meters_per_sec2"):
             # Domain: anchors
-            count = sum(1 for e in self.path.path_elements if hasattr(e, 'x_meters') or hasattr(e, 'translation_target'))
+            count = sum(
+                1
+                for e in self.path.path_elements
+                if hasattr(e, "x_meters") or hasattr(e, "translation_target")
+            )
             return "translation", int(count)
         else:
             # Domain: rotation events
-            count = sum(1 for e in self.path.path_elements if hasattr(e, 'rotation_radians') or hasattr(e, 'rotation_target'))
+            count = sum(
+                1
+                for e in self.path.path_elements
+                if hasattr(e, "rotation_radians") or hasattr(e, "rotation_target")
+            )
             return "rotation", int(count)
-            
+
     def create_range_slider_for_key(
-        self, 
-        key: str, 
-        control: QDoubleSpinBox, 
-        spin_row: QWidget, 
+        self,
+        key: str,
+        control: QDoubleSpinBox,
+        spin_row: QWidget,
         label_widget: QLabel,
-        constraints_layout: QFormLayout
+        constraints_layout: QFormLayout,
     ) -> RangeSlider:
         """Create or update a range slider for a constraint key."""
         domain, count = self.get_domain_info_for_key(key)
         total = max(1, count)
         slider_max = total + 1  # one extra notch beyond the last anchor
-        
+
         # Build / rebuild UI for ALL ranged instances of this key.
         # Gather current ranged constraints for this key
-        ranged_list = [rc for rc in (getattr(self.path, 'ranged_constraints', []) or []) if rc.key == key]
+        ranged_list = [
+            rc for rc in (getattr(self.path, "ranged_constraints", []) or []) if rc.key == key
+        ]
         if not ranged_list:
             # Nothing to build yet (should not happen if caller added constraint earlier)
             return None
@@ -357,11 +408,11 @@ class ConstraintManager(QObject):
             # Replace the label cell in the form with a tiny placeholder to keep row height consistent.
             # Propagate properties used for styling
             try:
-                group_name = spin_row.property('constraintGroup')
+                group_name = spin_row.property("constraintGroup")
                 if group_name is not None:
-                    field_container.setProperty('constraintGroup', group_name)
+                    field_container.setProperty("constraintGroup", group_name)
                 # Mark container as an encompassing group box; rows will be separate
-                field_container.setProperty('constraintGroupContainer', 'true')
+                field_container.setProperty("constraintGroupContainer", "true")
             except Exception:
                 pass
             self._constraint_field_containers[key] = field_container
@@ -415,7 +466,11 @@ class ConstraintManager(QObject):
             try:
                 present = False
                 for i in range(constraints_layout.rowCount()):
-                    for role in (QFormLayout.SpanningRole, QFormLayout.FieldRole, QFormLayout.LabelRole):
+                    for role in (
+                        QFormLayout.SpanningRole,
+                        QFormLayout.FieldRole,
+                        QFormLayout.LabelRole,
+                    ):
                         it = constraints_layout.itemAt(i, role)
                         if it is not None and it.widget() is field_container:
                             present = True
@@ -450,9 +505,9 @@ class ConstraintManager(QObject):
         def _make_slider_for_instance(instance_index: int, rc_obj):
             # Ensure a stable UI id on the ranged constraint; deep copies preserve attributes
             try:
-                uid = getattr(rc_obj, '_ui_instance_id', None)
+                uid = getattr(rc_obj, "_ui_instance_id", None)
                 if uid is None:
-                    setattr(rc_obj, '_ui_instance_id', int(self._rc_uid_seq))
+                    setattr(rc_obj, "_ui_instance_id", int(self._rc_uid_seq))
                     uid = int(self._rc_uid_seq)
                     self._rc_uid_seq += 1
             except Exception:
@@ -462,19 +517,23 @@ class ConstraintManager(QObject):
                 try:
                     if self.path is None:
                         return None
-                    target_uid = getattr(rc_obj, '_ui_instance_id', None)
-                    for r in (getattr(self.path, 'ranged_constraints', []) or []):
+                    target_uid = getattr(rc_obj, "_ui_instance_id", None)
+                    for r in getattr(self.path, "ranged_constraints", []) or []:
                         try:
-                            if getattr(r, 'key', None) == key and getattr(r, '_ui_instance_id', None) == target_uid:
+                            if (
+                                getattr(r, "key", None) == key
+                                and getattr(r, "_ui_instance_id", None) == target_uid
+                            ):
                                 return r
                         except Exception:
                             continue
                 except Exception:
                     return None
                 return None
+
             # Determine low/high from model
-            low_i_model = int(getattr(rc_obj, 'start_ordinal', 1))
-            high_i_model = int(getattr(rc_obj, 'end_ordinal', total))
+            low_i_model = int(getattr(rc_obj, "start_ordinal", 1))
+            high_i_model = int(getattr(rc_obj, "end_ordinal", total))
             # Map model (1-based inclusive) -> slider handles (left=start, right=end+1)
             low_i = max(1, min(low_i_model, total))
             high_i = max(2, min(high_i_model + 1, slider_max))
@@ -525,7 +584,7 @@ class ConstraintManager(QObject):
                 end1 = max(1, min(int(h - 1), int(total)))
                 # Announce about-to-change for undo snapshot
                 try:
-                    label = SPINNER_METADATA.get(key, {}).get('label', key).replace('<br/>', ' ')
+                    label = SPINNER_METADATA.get(key, {}).get("label", key).replace("<br/>", " ")
                     self.aboutToChange.emit(f"Edit Range: {label}")
                 except Exception:
                     pass
@@ -548,7 +607,9 @@ class ConstraintManager(QObject):
                 self._slider_prev_values[sld] = (int(l), int(h))
 
             sld.rangeChanged.connect(lambda _l, _h: _preview())
-            sld.interactionFinished.connect(lambda _l, _h: (setattr(self, '_active_preview_key', key), _commit()))
+            sld.interactionFinished.connect(
+                lambda _l, _h: (setattr(self, "_active_preview_key", key), _commit())
+            )
             return sld
 
         # Helper: ensure the base spin_row has no stale sliders before rebuilding
@@ -579,15 +640,15 @@ class ConstraintManager(QObject):
         def _normalize_instances(instances: List[Any]):
             try:
                 for rc in instances:
-                    l = int(getattr(rc, 'start_ordinal', 1))
-                    h = int(getattr(rc, 'end_ordinal', total))
+                    l = int(getattr(rc, "start_ordinal", 1))
+                    h = int(getattr(rc, "end_ordinal", total))
                     # Clamp to bounds and ensure non-empty [l, h]
                     l = max(1, min(l, total))
                     h = max(1, min(h, total))
                     if h < l:
                         h = l
-                    setattr(rc, 'start_ordinal', int(l))
-                    setattr(rc, 'end_ordinal', int(h))
+                    setattr(rc, "start_ordinal", int(l))
+                    setattr(rc, "end_ordinal", int(h))
             except Exception:
                 pass
 
@@ -600,18 +661,22 @@ class ConstraintManager(QObject):
                 # Initialize value
                 try:
                     spinbox.blockSignals(True)
-                    spinbox.setValue(float(getattr(rc_obj, 'value', control.value())))
+                    spinbox.setValue(float(getattr(rc_obj, "value", control.value())))
                 finally:
                     spinbox.blockSignals(False)
                 # Mark the base row widget to receive the rounded row styling
                 try:
-                    group_name = spin_row.property('constraintGroup') or spin_row.property('constraintGroup')
+                    group_name = spin_row.property("constraintGroup") or spin_row.property(
+                        "constraintGroup"
+                    )
                     if group_name is None:
                         # Inherit from container's original row
-                        group_name = getattr(spin_row, 'property', lambda *_: None)('constraintGroup')
+                        group_name = getattr(spin_row, "property", lambda *_: None)(
+                            "constraintGroup"
+                        )
                     if group_name is not None:
-                        spin_row.setProperty('constraintGroup', group_name)
-                    spin_row.setProperty('constraintRow', 'true')
+                        spin_row.setProperty("constraintGroup", group_name)
+                    spin_row.setProperty("constraintRow", "true")
                     # Ensure row has sufficient height to show border
                     try:
                         spin_row.setMinimumHeight(32)
@@ -643,8 +708,8 @@ class ConstraintManager(QObject):
                     pass
                 spinbox = NoWheelDoubleSpinBox()
                 meta = SPINNER_METADATA.get(key, {})
-                spinbox.setSingleStep(meta.get('step', 0.1))
-                rmin, rmax = meta.get('range', (0.0, 9999.0))
+                spinbox.setSingleStep(meta.get("step", 0.1))
+                rmin, rmax = meta.get("range", (0.0, 9999.0))
                 spinbox.setRange(rmin, rmax)
                 try:
                     spinbox.setDecimals(3)
@@ -652,7 +717,7 @@ class ConstraintManager(QObject):
                 except Exception:
                     pass
                 try:
-                    spinbox.setValue(float(getattr(rc_obj, 'value', 0.0)))
+                    spinbox.setValue(float(getattr(rc_obj, "value", 0.0)))
                 except Exception:
                     pass
                 # Enforce uniform width matching the base control if possible
@@ -668,7 +733,9 @@ class ConstraintManager(QObject):
                     remove_btn.setIcon(QIcon(":/assets/remove_icon.png"))
                     remove_btn.setFixedSize(16, 16)
                     remove_btn.setIconSize(QSize(14, 14))
-                    remove_btn.setStyleSheet("QPushButton { border: none; } QPushButton:hover { background: #555; border-radius: 3px; }")
+                    remove_btn.setStyleSheet(
+                        "QPushButton { border: none; } QPushButton:hover { background: #555; border-radius: 3px; }"
+                    )
                 except Exception:
                     pass
 
@@ -676,12 +743,16 @@ class ConstraintManager(QObject):
                     def _remove():
                         # Announce about-to-change for undo snapshot
                         try:
-                            label = SPINNER_METADATA.get(key, {}).get('label', key).replace('<br/>', ' ')
+                            label = (
+                                SPINNER_METADATA.get(key, {})
+                                .get("label", key)
+                                .replace("<br/>", " ")
+                            )
                             self.aboutToChange.emit(f"Remove {label}")
                         except Exception:
                             pass
                         try:
-                            rc_list = (getattr(self.path, 'ranged_constraints', []) or [])
+                            rc_list = getattr(self.path, "ranged_constraints", []) or []
                             removed = False
                             # First try strict identity removal
                             new_list = []
@@ -693,21 +764,23 @@ class ConstraintManager(QObject):
                             if not removed:
                                 # Fall back to signature-based removal (handles deep-copied model after undo snapshot)
                                 try:
-                                    t_key = getattr(target_rc, 'key', None)
-                                    t_l = int(getattr(target_rc, 'start_ordinal', 1))
-                                    t_h = int(getattr(target_rc, 'end_ordinal', 1))
-                                    t_val = getattr(target_rc, 'value', None)
+                                    t_key = getattr(target_rc, "key", None)
+                                    t_l = int(getattr(target_rc, "start_ordinal", 1))
+                                    t_h = int(getattr(target_rc, "end_ordinal", 1))
+                                    t_val = getattr(target_rc, "value", None)
                                 except Exception:
                                     t_key, t_l, t_h, t_val = None, None, None, None
                                 new_list2 = []
                                 matched_once = False
                                 for rc in rc_list:
                                     try:
-                                        if (not matched_once and
-                                            getattr(rc, 'key', None) == t_key and
-                                            int(getattr(rc, 'start_ordinal', -1)) == int(t_l) and
-                                            int(getattr(rc, 'end_ordinal', -1)) == int(t_h) and
-                                            getattr(rc, 'value', None) == t_val):
+                                        if (
+                                            not matched_once
+                                            and getattr(rc, "key", None) == t_key
+                                            and int(getattr(rc, "start_ordinal", -1)) == int(t_l)
+                                            and int(getattr(rc, "end_ordinal", -1)) == int(t_h)
+                                            and getattr(rc, "value", None) == t_val
+                                        ):
                                             matched_once = True
                                             continue
                                     except Exception:
@@ -721,7 +794,11 @@ class ConstraintManager(QObject):
                         except Exception:
                             pass
                         # If no instances left for key, emit full removal and return
-                        remaining = [rc for rc in (getattr(self.path, 'ranged_constraints', []) or []) if getattr(rc, 'key', None) == key]
+                        remaining = [
+                            rc
+                            for rc in (getattr(self.path, "ranged_constraints", []) or [])
+                            if getattr(rc, "key", None) == key
+                        ]
                         if not remaining:
                             # Fully remove constraint entry and its UI container
                             try:
@@ -736,7 +813,9 @@ class ConstraintManager(QObject):
                             return
                         # Rebuild UI for remaining instances
                         try:
-                            self.create_range_slider_for_key(key, control, spin_row, label_widget, constraints_layout)
+                            self.create_range_slider_for_key(
+                                key, control, spin_row, label_widget, constraints_layout
+                            )
                         except Exception:
                             pass
                         # Refresh preview to first instance
@@ -748,16 +827,17 @@ class ConstraintManager(QObject):
                             self.userActionOccurred.emit(f"Remove {label}")
                         except Exception:
                             pass
+
                     return _remove
 
                 remove_btn.clicked.connect(_make_remove_handler(rc_obj))
 
                 # Set styling properties to align with the group for consistent background
                 try:
-                    group_name = spin_row.property('constraintGroup')
+                    group_name = spin_row.property("constraintGroup")
                     if group_name is not None:
-                        spin_row_extra.setProperty('constraintGroup', group_name)
-                    spin_row_extra.setProperty('constraintRow', 'true')
+                        spin_row_extra.setProperty("constraintGroup", group_name)
+                    spin_row_extra.setProperty("constraintRow", "true")
                     # Repolish to apply dynamic property style
                     try:
                         st2 = spin_row_extra.style()
@@ -782,7 +862,11 @@ class ConstraintManager(QObject):
                     # and are snapshot by Sidebar/MainWindow. Only emit undo signals for extra instances.
                     if not is_primary:
                         try:
-                            label = SPINNER_METADATA.get(key, {}).get('label', key).replace('<br/>', ' ')
+                            label = (
+                                SPINNER_METADATA.get(key, {})
+                                .get("label", key)
+                                .replace("<br/>", " ")
+                            )
                             self.aboutToChange.emit(f"Edit Path Constraint: {label}")
                         except Exception:
                             pass
@@ -790,11 +874,14 @@ class ConstraintManager(QObject):
                     # updating a stale deep-copied object after autosave/undo refreshes.
                     rc_live = target_rc
                     try:
-                        target_uid = getattr(target_rc, '_ui_instance_id', None)
+                        target_uid = getattr(target_rc, "_ui_instance_id", None)
                         if target_uid is not None and self.path is not None:
-                            for r in (getattr(self.path, 'ranged_constraints', []) or []):
+                            for r in getattr(self.path, "ranged_constraints", []) or []:
                                 try:
-                                    if getattr(r, 'key', None) == key and getattr(r, '_ui_instance_id', None) == target_uid:
+                                    if (
+                                        getattr(r, "key", None) == key
+                                        and getattr(r, "_ui_instance_id", None) == target_uid
+                                    ):
                                         rc_live = r
                                         break
                                 except Exception:
@@ -807,7 +894,9 @@ class ConstraintManager(QObject):
                             self.userActionOccurred.emit(f"Edit Path Constraint: {label}")
                         except Exception:
                             pass
+
                 return _handler
+
             spinbox.valueChanged.connect(_make_value_handler(rc_obj, idx == 0))
 
             # While interacting with the spinbox, also show the corresponding range preview
@@ -818,8 +907,10 @@ class ConstraintManager(QObject):
                 if self.path is None:
                     return
 
-                ranged_constraints = getattr(self.path, 'ranged_constraints', []) or []
-                matching_constraints = [rc for rc in ranged_constraints if getattr(rc, 'key', None) == key]
+                ranged_constraints = getattr(self.path, "ranged_constraints", []) or []
+                matching_constraints = [
+                    rc for rc in ranged_constraints if getattr(rc, "key", None) == key
+                ]
 
                 if instance_idx < len(matching_constraints):
                     rc_live = matching_constraints[instance_idx]
@@ -828,8 +919,8 @@ class ConstraintManager(QObject):
                     rc_live = rc_obj
 
                 # Use the actual constraint ordinals for preview
-                start_ord = max(1, min(int(getattr(rc_live, 'start_ordinal', 1)), int(total)))
-                end_ord = max(1, min(int(getattr(rc_live, 'end_ordinal', total)), int(total)))
+                start_ord = max(1, min(int(getattr(rc_live, "start_ordinal", 1)), int(total)))
+                end_ord = max(1, min(int(getattr(rc_live, "end_ordinal", total)), int(total)))
 
                 self._active_preview_key = key
                 self.constraintRangePreviewRequested.emit(key, start_ord, end_ord)
@@ -843,7 +934,7 @@ class ConstraintManager(QObject):
             # Create and add slider on the same row as the spinbox
             sld = _make_slider_for_instance(idx, rc_obj)
             try:
-                row_widget = (spin_row if idx == 0 else spin_row_extra)
+                row_widget = spin_row if idx == 0 else spin_row_extra
                 row_layout = row_widget.layout()
                 if row_layout is not None:
                     # For the base row, move the remove button to the far right after the slider
@@ -900,14 +991,17 @@ class ConstraintManager(QObject):
                 orig_focus_in = spinbox.focusInEvent
             except Exception:
                 orig_focus_in = None
+
             def _focus_in(ev, _spin=spinbox, _orig=orig_focus_in, instance_idx=idx):
                 try:
                     # Find the correct constraint instance for this spinbox
                     if self.path is None:
                         return
 
-                    ranged_constraints = getattr(self.path, 'ranged_constraints', []) or []
-                    matching_constraints = [rc for rc in ranged_constraints if getattr(rc, 'key', None) == key]
+                    ranged_constraints = getattr(self.path, "ranged_constraints", []) or []
+                    matching_constraints = [
+                        rc for rc in ranged_constraints if getattr(rc, "key", None) == key
+                    ]
 
                     if instance_idx < len(matching_constraints):
                         rc_live = matching_constraints[instance_idx]
@@ -915,8 +1009,8 @@ class ConstraintManager(QObject):
                         rc_live = rc_obj
 
                     # Use the actual constraint ordinals for preview
-                    start_ord = max(1, min(int(getattr(rc_live, 'start_ordinal', 1)), int(total)))
-                    end_ord = max(1, min(int(getattr(rc_live, 'end_ordinal', total)), int(total)))
+                    start_ord = max(1, min(int(getattr(rc_live, "start_ordinal", 1)), int(total)))
+                    end_ord = max(1, min(int(getattr(rc_live, "end_ordinal", total)), int(total)))
 
                     self._active_preview_key = key
                     self.constraintRangePreviewRequested.emit(key, start_ord, end_ord)
@@ -928,9 +1022,11 @@ class ConstraintManager(QObject):
                 except Exception:
                     try:
                         from PySide6.QtWidgets import QDoubleSpinBox
+
                         QDoubleSpinBox.focusInEvent(_spin, ev)
                     except Exception:
                         pass
+
             try:
                 spinbox.focusInEvent = _focus_in
             except Exception:
@@ -939,10 +1035,12 @@ class ConstraintManager(QObject):
             # Also emit preview on mouse press/double-click within the spinbox (or its child editor)
             try:
                 from PySide6.QtCore import QObject, QEvent
+
                 class SpinboxPreviewFilter(QObject):
                     def __init__(self, callback):
                         super().__init__()
                         self._cb = callback
+
                     def eventFilter(self, obj, event):
                         try:
                             et = event.type()
@@ -952,14 +1050,17 @@ class ConstraintManager(QObject):
                         except Exception:
                             pass
                         return False
+
                 def _emit_preview_from_spin(instance_idx=idx):
                     try:
                         # Find the correct constraint instance for this spinbox
                         if self.path is None:
                             return
 
-                        ranged_constraints = getattr(self.path, 'ranged_constraints', []) or []
-                        matching_constraints = [rc for rc in ranged_constraints if getattr(rc, 'key', None) == key]
+                        ranged_constraints = getattr(self.path, "ranged_constraints", []) or []
+                        matching_constraints = [
+                            rc for rc in ranged_constraints if getattr(rc, "key", None) == key
+                        ]
 
                         if instance_idx < len(matching_constraints):
                             rc_live = matching_constraints[instance_idx]
@@ -967,13 +1068,18 @@ class ConstraintManager(QObject):
                             rc_live = rc_obj
 
                         # Use the actual constraint ordinals for preview
-                        start_ord = max(1, min(int(getattr(rc_live, 'start_ordinal', 1)), int(total)))
-                        end_ord = max(1, min(int(getattr(rc_live, 'end_ordinal', total)), int(total)))
+                        start_ord = max(
+                            1, min(int(getattr(rc_live, "start_ordinal", 1)), int(total))
+                        )
+                        end_ord = max(
+                            1, min(int(getattr(rc_live, "end_ordinal", total)), int(total))
+                        )
 
                         self._active_preview_key = key
                         self.constraintRangePreviewRequested.emit(key, start_ord, end_ord)
                     except Exception:
                         pass
+
                 filt = SpinboxPreviewFilter(_emit_preview_from_spin)
                 spinbox.installEventFilter(filt)
                 try:
@@ -982,7 +1088,7 @@ class ConstraintManager(QObject):
                         editor.installEventFilter(filt)
                 except Exception:
                     pass
-                if not hasattr(self, '_spinbox_preview_filters'):
+                if not hasattr(self, "_spinbox_preview_filters"):
                     self._spinbox_preview_filters = {}
                 try:
                     self._spinbox_preview_filters.setdefault(key, []).append(filt)
@@ -997,13 +1103,16 @@ class ConstraintManager(QObject):
             pass
 
         # Make label clickable to show preview of first instance
-        label_widget.setStyleSheet(label_widget.styleSheet() + " QLabel:hover { text-decoration: underline; }")
+        label_widget.setStyleSheet(
+            label_widget.styleSheet() + " QLabel:hover { text-decoration: underline; }"
+        )
         label_widget.setCursor(QCursor(Qt.PointingHandCursor))
 
         class LabelClickFilter(QObject):
             def __init__(self, callback):
                 super().__init__()
                 self.callback = callback
+
             def eventFilter(self, obj, event):
                 if event.type() == QEvent.MouseButtonPress:
                     if isinstance(event, QMouseEvent) and event.button() == Qt.LeftButton:
@@ -1022,7 +1131,7 @@ class ConstraintManager(QObject):
 
         label_filter = LabelClickFilter(_show_first_preview)
         label_widget.installEventFilter(label_filter)
-        if not hasattr(self, '_label_filters'):
+        if not hasattr(self, "_label_filters"):
             self._label_filters = {}
         self._label_filters[key] = label_filter
 
@@ -1044,7 +1153,7 @@ class ConstraintManager(QObject):
                 pass
         # Emit generic value changed signal
         self.constraintValueChanged.emit(key, float(value))
-        
+
     def clear_range_sliders(self):
         """Clear all range sliders."""
         try:
@@ -1074,7 +1183,7 @@ class ConstraintManager(QObject):
                     pass
         except Exception:
             pass
-            
+
     def set_active_preview_key(self, key: str):
         """Set the active constraint preview key and emit preview signal."""
         try:
@@ -1090,11 +1199,15 @@ class ConstraintManager(QObject):
                 self.constraintRangePreviewRequested.emit(key, int(start1), int(end1))
         except Exception:
             pass
-            
+
     def refresh_active_preview(self):
         """Refresh the preview for the currently active constraint key."""
         try:
-            if self._active_preview_key is not None and self._active_preview_key in self._range_sliders and self._range_sliders[self._active_preview_key]:
+            if (
+                self._active_preview_key is not None
+                and self._active_preview_key in self._range_sliders
+                and self._range_sliders[self._active_preview_key]
+            ):
                 s = self._range_sliders[self._active_preview_key][0]
                 l, h = s.values()
                 # Map slider handles to model ordinals
@@ -1102,10 +1215,12 @@ class ConstraintManager(QObject):
                 total = int(count) if int(count) > 0 else 1
                 start1 = max(1, min(int(l), total))
                 end1 = max(1, min(int(h - 1), total))
-                self.constraintRangePreviewRequested.emit(self._active_preview_key, int(start1), int(end1))
+                self.constraintRangePreviewRequested.emit(
+                    self._active_preview_key, int(start1), int(end1)
+                )
         except Exception:
             pass
-            
+
     def clear_active_preview(self):
         """Clear the active preview."""
         try:
@@ -1113,24 +1228,24 @@ class ConstraintManager(QObject):
             self.constraintRangePreviewCleared.emit()
         except Exception:
             pass
-            
+
     def is_widget_range_related(self, widget: QWidget) -> bool:
         """Return True if the clicked widget is inside a constraint label/spinner/slider area."""
         try:
             if widget is None:
                 return False
-                
+
             # Check sliders
             for _key, slider_list in self._range_sliders.items():
                 for slider in slider_list:
                     try:
                         if slider is widget:
                             return True
-                        if hasattr(slider, 'isAncestorOf') and slider.isAncestorOf(widget):
+                        if hasattr(slider, "isAncestorOf") and slider.isAncestorOf(widget):
                             return True
                     except Exception:
                         pass
-                    
+
             # Check slider containers
             for _key, row in self._range_slider_rows.items():
                 if row is None:
@@ -1138,11 +1253,11 @@ class ConstraintManager(QObject):
                 try:
                     if row is widget:
                         return True
-                    if hasattr(row, 'isAncestorOf') and row.isAncestorOf(widget):
+                    if hasattr(row, "isAncestorOf") and row.isAncestorOf(widget):
                         return True
                 except Exception:
                     pass
-            
+
             # Check spinboxes and their child widgets
             try:
                 for _key, spin_list in self._range_spinboxes.items():
@@ -1150,16 +1265,16 @@ class ConstraintManager(QObject):
                         try:
                             if spin is widget:
                                 return True
-                            if hasattr(spin, 'isAncestorOf') and spin.isAncestorOf(widget):
+                            if hasattr(spin, "isAncestorOf") and spin.isAncestorOf(widget):
                                 return True
                         except Exception:
                             continue
             except Exception:
                 pass
-                    
+
         except Exception:
             return False
-            
+
         return False
 
     def can_add_more_instances(self, key: str) -> bool:
@@ -1173,14 +1288,18 @@ class ConstraintManager(QObject):
         try:
             _domain, count = self.get_domain_info_for_key(key)
             total = int(count) if int(count) > 0 else 1
-            existing = [rc for rc in (getattr(self.path, 'ranged_constraints', []) or []) if getattr(rc, 'key', None) == key]
+            existing = [
+                rc
+                for rc in (getattr(self.path, "ranged_constraints", []) or [])
+                if getattr(rc, "key", None) == key
+            ]
             # Compute occupied units and whether a split is feasible
             occupied_units = set()
             largest_len = 0
             for rc in existing:
                 try:
-                    l = int(getattr(rc, 'start_ordinal', 1))
-                    h = int(getattr(rc, 'end_ordinal', total))
+                    l = int(getattr(rc, "start_ordinal", 1))
+                    h = int(getattr(rc, "end_ordinal", total))
                     l = max(1, min(l, total))
                     h = max(1, min(h, total))
                     if h < l:
@@ -1198,7 +1317,9 @@ class ConstraintManager(QObject):
             return False
 
     # ---- Overlap enforcement helpers ----
-    def _would_overlap_for_key(self, key: str, active_slider: RangeSlider, new_low: int, new_high: int) -> bool:
+    def _would_overlap_for_key(
+        self, key: str, active_slider: RangeSlider, new_low: int, new_high: int
+    ) -> bool:
         """Return True if setting active_slider to [new_low, new_high) would overlap any
         other slider of the same key. Touching at boundaries is allowed.
         """
@@ -1220,20 +1341,20 @@ class ConstraintManager(QObject):
             return False
         finally:
             self._enforcing_slider_constraints = False
-        
+
     def get_constraint_value(self, key: str) -> Optional[float]:
         """Get the current value of a constraint."""
-        if self.path is None or not hasattr(self.path, 'constraints'):
+        if self.path is None or not hasattr(self.path, "constraints"):
             return None
-            
+
         # Check ranged constraints first
         try:
-            for rc in getattr(self.path, 'ranged_constraints', []) or []:
-                if getattr(rc, 'key', None) == key:
-                    return float(getattr(rc, 'value', None))
+            for rc in getattr(self.path, "ranged_constraints", []) or []:
+                if getattr(rc, "key", None) == key:
+                    return float(getattr(rc, "value", None))
         except Exception:
             pass
-            
+
         # Check flat constraint
         try:
             val = getattr(self.path.constraints, key, None)
@@ -1241,26 +1362,32 @@ class ConstraintManager(QObject):
                 return float(val)
         except Exception:
             pass
-            
+
         return None
-        
+
     def has_constraint(self, key: str) -> bool:
         """Check if a constraint is present."""
         if self.path is None:
             return False
-            
+
         # Check ranged constraints
         try:
-            if any(getattr(rc, 'key', None) == key for rc in (getattr(self.path, 'ranged_constraints', []) or [])):
+            if any(
+                getattr(rc, "key", None) == key
+                for rc in (getattr(self.path, "ranged_constraints", []) or [])
+            ):
                 return True
         except Exception:
             pass
-            
+
         # Check flat constraint
         try:
-            if hasattr(self.path, 'constraints') and getattr(self.path.constraints, key, None) is not None:
+            if (
+                hasattr(self.path, "constraints")
+                and getattr(self.path.constraints, key, None) is not None
+            ):
                 return True
         except Exception:
             pass
-            
+
         return False

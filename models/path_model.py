@@ -3,8 +3,10 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 from abc import ABC
 
+
 class PathElement(ABC):
     pass
+
 
 @dataclass
 class Constraints:
@@ -15,6 +17,7 @@ class Constraints:
     # Added non-ranged terminal tolerances (stored with path, not per-element ranges)
     end_translation_tolerance_meters: Optional[float] = None
     end_rotation_tolerance_deg: Optional[float] = None
+
 
 @dataclass
 class RangedConstraint:
@@ -30,16 +33,19 @@ class RangedConstraint:
     effective constrained path spans from the anchor just before the first event through the last
     event position (at the waypoint itself or inside the segment for a RotationTarget).
     """
+
     key: str  # one of: max_velocity_meters_per_sec, max_acceleration_meters_per_sec2, max_velocity_deg_per_sec, max_acceleration_deg_per_sec2
     value: float
     start_ordinal: int  # 1-based ordinal within the applicable domain list
-    end_ordinal: int    # inclusive, 1-based
+    end_ordinal: int  # inclusive, 1-based
+
 
 @dataclass
 class TranslationTarget(PathElement):
-    x_meters : float = 0
-    y_meters : float = 0
-    intermediate_handoff_radius_meters : Optional[float] = None
+    x_meters: float = 0
+    y_meters: float = 0
+    intermediate_handoff_radius_meters: Optional[float] = None
+
 
 @dataclass
 class RotationTarget(PathElement):
@@ -50,16 +56,18 @@ class RotationTarget(PathElement):
     t_ratio: float = 0.0
     profiled_rotation: bool = True
 
+
 @dataclass
 class Waypoint(PathElement):
-    translation_target : TranslationTarget = field(default_factory=TranslationTarget)
-    rotation_target : RotationTarget = field(default_factory=RotationTarget)
+    translation_target: TranslationTarget = field(default_factory=TranslationTarget)
+    rotation_target: RotationTarget = field(default_factory=RotationTarget)
+
 
 @dataclass
 class Path:
-    path_elements : List[PathElement] = field(default_factory=list)
-    constraints : Constraints = field(default_factory=Constraints)
-    ranged_constraints : List[RangedConstraint] = field(default_factory=list)
+    path_elements: List[PathElement] = field(default_factory=list)
+    constraints: Constraints = field(default_factory=Constraints)
+    ranged_constraints: List[RangedConstraint] = field(default_factory=list)
 
     def get_element(self, index: int) -> PathElement:
         if 0 <= index < len(self.path_elements):

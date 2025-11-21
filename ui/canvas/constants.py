@@ -1,4 +1,5 @@
 """Constants for the canvas module (field + element geometry in meters)."""
+
 from __future__ import annotations
 from PySide6.QtGui import QPen, QColor
 from PySide6.QtCore import Qt

@@ -4,7 +4,14 @@ import math
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
-from models.path_model import Path, PathElement, RotationTarget, TranslationTarget, Waypoint, RangedConstraint
+from models.path_model import (
+    Path,
+    PathElement,
+    RotationTarget,
+    TranslationTarget,
+    Waypoint,
+    RangedConstraint,
+)
 
 
 @dataclass
@@ -68,7 +75,9 @@ def limit_acceleration(
     theta = math.atan2(dvy, dvx) if (abs(dvx) + abs(dvy)) > 0.0 else 0.0
 
     desired_alpha = (desired.omega_radps - last.omega_radps) / dt
-    obtainable_alpha = max(-float(max_angular_accel_radps2), min(desired_alpha, float(max_angular_accel_radps2)))
+    obtainable_alpha = max(
+        -float(max_angular_accel_radps2), min(desired_alpha, float(max_angular_accel_radps2))
+    )
 
     return ChassisSpeeds(
         vx_mps=last.vx_mps + math.cos(theta) * obtainable_acc * dt,
@@ -82,6 +91,7 @@ class _RotationKeyframe:
     t_ratio: float
     theta_target: float
     profiled_rotation: bool = True
+
 
 @dataclass
 class _Segment:
@@ -112,7 +122,9 @@ def _build_segments(path: Path) -> Tuple[List[_Segment], List[Tuple[float, float
             anchors.append((float(elem.x_meters), float(elem.y_meters)))
             anchor_path_indices.append(idx)
         elif isinstance(elem, Waypoint):
-            anchors.append((float(elem.translation_target.x_meters), float(elem.translation_target.y_meters)))
+            anchors.append(
+                (float(elem.translation_target.x_meters), float(elem.translation_target.y_meters))
+            )
             anchor_path_indices.append(idx)
 
     segments: List[_Segment] = []
@@ -163,25 +175,27 @@ def _build_segments(path: Path) -> Tuple[List[_Segment], List[Tuple[float, float
             this_anchor_ord = path_idx_to_anchor_ord.get(idx)
             if this_anchor_ord is None:
                 continue
-            
+
             # For waypoints, the rotation should happen at the waypoint location
             # This means we need to add it to the segment that ENDS at this waypoint
             # (i.e., the previous segment with t_ratio = 1.0)
             # OR to the segment that STARTS at this waypoint with t_ratio = 0.0
-            
+
             # Strategy: Add to the segment that starts at this waypoint with t_ratio = 0.0
             # This ensures the robot has the correct heading when leaving the waypoint
             if this_anchor_ord < len(segments):
                 theta = float(rt.rotation_radians)
                 profiled = getattr(rt, "profiled_rotation", True)
                 segments[this_anchor_ord].keyframes.append(_RotationKeyframe(0.0, theta, profiled))
-            
+
             # Also add to the previous segment with t_ratio = 1.0 if it exists
             # This ensures the robot rotates to the correct heading when arriving at the waypoint
             if this_anchor_ord > 0:
                 theta = float(rt.rotation_radians)
                 profiled = getattr(rt, "profiled_rotation", True)
-                segments[this_anchor_ord - 1].keyframes.append(_RotationKeyframe(1.0, theta, profiled))
+                segments[this_anchor_ord - 1].keyframes.append(
+                    _RotationKeyframe(1.0, theta, profiled)
+                )
 
     for seg in segments:
         if not seg.keyframes:
@@ -302,11 +316,11 @@ def _desired_heading_for_global_s(
             # Exactly at this keyframe: hold its heading; do not pre-snap ahead
             if abs(s_m - s0) <= 1e-12:
                 delta = shortest_angular_distance(th1, th0)
-                dtheta_ds = (delta / max((s1 - s0), 1e-9))
+                dtheta_ds = delta / max((s1 - s0), 1e-9)
                 return th0, dtheta_ds, profiled1
             # Before the keyframe: continue holding current heading; no pre-snap
             delta = shortest_angular_distance(th1, th0)
-            dtheta_ds = (delta / max((s1 - s0), 1e-9))
+            dtheta_ds = delta / max((s1 - s0), 1e-9)
             return th0, dtheta_ds, profiled1
         if s0 < s_m <= s1 + 1e-12:
             if not profiled1:
@@ -314,7 +328,7 @@ def _desired_heading_for_global_s(
             alpha = (s_m - s0) / max((s1 - s0), 1e-9)
             delta = shortest_angular_distance(th1, th0)
             desired_theta = wrap_angle_radians(th0 + delta * alpha)
-            dtheta_ds = (delta / max((s1 - s0), 1e-9))
+            dtheta_ds = delta / max((s1 - s0), 1e-9)
             return desired_theta, dtheta_ds, profiled1
 
     # After the last frame, hold
@@ -347,11 +361,11 @@ def _desired_heading_for_progress(
             # Exactly at this keyframe: hold its heading; do not pre-snap ahead
             if abs(t - t0) <= 1e-12:
                 delta = shortest_angular_distance(th1, th0)
-                dtheta_ds = (delta / max((t1 - t0) * max(seg.length_m, 1e-9), 1e-9))
+                dtheta_ds = delta / max((t1 - t0) * max(seg.length_m, 1e-9), 1e-9)
                 return th0, dtheta_ds, profiled1
             # Before this keyframe: hold current heading; do not pre-snap
             delta = shortest_angular_distance(th1, th0)
-            dtheta_ds = (delta / max((t1 - t0) * max(seg.length_m, 1e-9), 1e-9))
+            dtheta_ds = delta / max((t1 - t0) * max(seg.length_m, 1e-9), 1e-9)
             return th0, dtheta_ds, profiled1
         if t0 < t <= t1 + 1e-12:
             if not profiled1:
@@ -359,7 +373,7 @@ def _desired_heading_for_progress(
             alpha = (t - t0) / max((t1 - t0), 1e-9)
             delta = shortest_angular_distance(th1, th0)
             desired_theta = wrap_angle_radians(th0 + delta * alpha)
-            dtheta_ds = (delta / max((t1 - t0) * max(seg.length_m, 1e-9), 1e-9))
+            dtheta_ds = delta / max((t1 - t0) * max(seg.length_m, 1e-9), 1e-9)
             return desired_theta, dtheta_ds, profiled1
 
     t_last, th_last, profiled_last = frames[-1]
@@ -375,7 +389,7 @@ def _trapezoidal_rotation_profile(
     current_omega: float,
     max_omega: float,
     max_alpha: float,
-    dt: float
+    dt: float,
 ) -> float:
     """
     Time-optimal, discrete-time trapezoidal profile without heuristics.
@@ -444,26 +458,30 @@ def _resolve_constraint(value: Optional[float], fallback: Optional[float], defau
     return float(default)
 
 
-def _get_handoff_radius_for_segment(path: Path, seg_index: int, anchor_path_indices: List[int], default_radius: float) -> float:
+def _get_handoff_radius_for_segment(
+    path: Path, seg_index: int, anchor_path_indices: List[int], default_radius: float
+) -> float:
     """Get the handoff radius for a specific segment. Uses the radius from the target element of that segment."""
     if seg_index < 0 or seg_index >= len(anchor_path_indices) - 1:
         return default_radius
-    
+
     # The target element for this segment is at anchor_path_indices[seg_index + 1]
     target_element_index = anchor_path_indices[seg_index + 1]
-    
+
     if target_element_index >= len(path.path_elements):
         return default_radius
-    
+
     target_element = path.path_elements[target_element_index]
-    
+
     # Get handoff radius from the target element
     radius = None
     if isinstance(target_element, TranslationTarget):
-        radius = getattr(target_element, 'intermediate_handoff_radius_meters', None)
+        radius = getattr(target_element, "intermediate_handoff_radius_meters", None)
     elif isinstance(target_element, Waypoint):
-        radius = getattr(target_element.translation_target, 'intermediate_handoff_radius_meters', None)
-    
+        radius = getattr(
+            target_element.translation_target, "intermediate_handoff_radius_meters", None
+        )
+
     # Use element radius if set and positive, otherwise use default
     if radius is not None and radius > 0:
         return float(radius)
@@ -488,31 +506,56 @@ def simulate_path(
             poses_by_time[0.0] = (x0, y0, 0.0)
             times_sorted = [0.0]
             trail_points = [(x0, y0)]
-        return SimResult(poses_by_time=poses_by_time, times_sorted=times_sorted, total_time_s=0.0, trail_points=trail_points)
+        return SimResult(
+            poses_by_time=poses_by_time,
+            times_sorted=times_sorted,
+            total_time_s=0.0,
+            trail_points=trail_points,
+        )
 
     c = getattr(path, "constraints", None)
-    base_max_v = _resolve_constraint(getattr(c, "max_velocity_meters_per_sec", None), cfg.get("default_max_velocity_meters_per_sec"), 3.0)
-    base_max_a = _resolve_constraint(getattr(c, "max_acceleration_meters_per_sec2", None), cfg.get("default_max_acceleration_meters_per_sec2"), 2.5)
+    base_max_v = _resolve_constraint(
+        getattr(c, "max_velocity_meters_per_sec", None),
+        cfg.get("default_max_velocity_meters_per_sec"),
+        3.0,
+    )
+    base_max_a = _resolve_constraint(
+        getattr(c, "max_acceleration_meters_per_sec2", None),
+        cfg.get("default_max_acceleration_meters_per_sec2"),
+        2.5,
+    )
 
-    base_max_omega = math.radians(_resolve_constraint(getattr(c, "max_velocity_deg_per_sec", None), cfg.get("default_max_velocity_deg_per_sec"), 180.0))
-    base_max_alpha = math.radians(_resolve_constraint(getattr(c, "max_acceleration_deg_per_sec2", None), cfg.get("default_max_acceleration_deg_per_sec2"), 360.0))
-    
+    base_max_omega = math.radians(
+        _resolve_constraint(
+            getattr(c, "max_velocity_deg_per_sec", None),
+            cfg.get("default_max_velocity_deg_per_sec"),
+            180.0,
+        )
+    )
+    base_max_alpha = math.radians(
+        _resolve_constraint(
+            getattr(c, "max_acceleration_deg_per_sec2", None),
+            cfg.get("default_max_acceleration_deg_per_sec2"),
+            360.0,
+        )
+    )
+
     def _active_translation_limit(key: str, next_anchor_ord: int) -> Optional[float]:
         """Return the most restrictive translation constraint (minimum value) active
         for the given next anchor ordinal (1-based). If none match, returns None.
         """
         best: Optional[float] = None
         try:
-            for rc in getattr(path, 'ranged_constraints', []) or []:
+            for rc in getattr(path, "ranged_constraints", []) or []:
                 try:
                     if not isinstance(rc, RangedConstraint):
                         continue
                     if rc.key != key:
                         continue
-                    l = int(getattr(rc, 'start_ordinal', 1))
-                    h = int(getattr(rc, 'end_ordinal', 1))
+                    l = int(getattr(rc, "start_ordinal", 1))
+                    h = int(getattr(rc, "end_ordinal", 1))
                     if int(l) <= int(next_anchor_ord) <= int(h):
-                        v = float(getattr(rc, 'value', None))
+                        v = float(getattr(rc, "value", None))
                         if v > 0.0:
                             best = v if (best is None or v < best) else best
                 except Exception:
@@ -533,17 +576,17 @@ def simulate_path(
         n = len(global_keyframes)
         for i, kf in enumerate(global_keyframes):
             if global_s_now < kf.s_m - tol_s:
-                return int(getattr(kf, 'event_ordinal_1b', i + 1))
+                return int(getattr(kf, "event_ordinal_1b", i + 1))
             if abs(global_s_now - kf.s_m) <= tol_s:
                 # At an event: switch immediately to next if available
                 if i + 1 < n:
                     next_kf = global_keyframes[i + 1]
-                    return int(getattr(next_kf, 'event_ordinal_1b', i + 2))
+                    return int(getattr(next_kf, "event_ordinal_1b", i + 2))
                 # No next event; continue using this event
-                return int(getattr(kf, 'event_ordinal_1b', i + 1))
+                return int(getattr(kf, "event_ordinal_1b", i + 1))
         # After the last event
         last_kf = global_keyframes[-1]
-        return int(getattr(last_kf, 'event_ordinal_1b', len(global_keyframes)))
+        return int(getattr(last_kf, "event_ordinal_1b", len(global_keyframes)))
 
     def _active_rotation_limit(key: str, global_s_now: float) -> Optional[float]:
         """Return the most restrictive rotation constraint (minimum value) for the
@@ -554,16 +597,16 @@ def simulate_path(
             return None
         best: Optional[float] = None
         try:
-            for rc in getattr(path, 'ranged_constraints', []) or []:
+            for rc in getattr(path, "ranged_constraints", []) or []:
                 try:
                     if not isinstance(rc, RangedConstraint):
                         continue
                     if rc.key != key:
                         continue
-                    l = int(getattr(rc, 'start_ordinal', 1))
-                    h = int(getattr(rc, 'end_ordinal', 1))
+                    l = int(getattr(rc, "start_ordinal", 1))
+                    h = int(getattr(rc, "end_ordinal", 1))
                     if int(l) <= int(event_ord_1b) <= int(h):
-                        v = float(getattr(rc, 'value', None))
+                        v = float(getattr(rc, "value", None))
                         if v > 0.0:
                             best = v if (best is None or v < best) else best
                 except Exception:
@@ -579,7 +622,9 @@ def simulate_path(
     _EPS_ANG = 1e-3
 
     # Default handoff radius from config
-    default_handoff_radius = _resolve_constraint(None, cfg.get("default_intermediate_handoff_radius_meters"), 0.05)
+    default_handoff_radius = _resolve_constraint(
+        None, cfg.get("default_intermediate_handoff_radius_meters"), 0.05
+    )
 
     total_path_len = 0.0
     cumulative_lengths: List[float] = [0.0]
@@ -606,10 +651,14 @@ def simulate_path(
         start_heading_base = initial_rotation
 
     # Build global rotation keyframes for rotation event ordinals and compute initial heading at s=0
-    global_keyframes = _build_global_rotation_keyframes(path, anchor_path_indices, cumulative_lengths)
+    global_keyframes = _build_global_rotation_keyframes(
+        path, anchor_path_indices, cumulative_lengths
+    )
     initial_heading, _, _ = _desired_heading_for_global_s(global_keyframes, 0.0, start_heading_base)
     # Desired heading at the absolute end of the path
-    end_heading_target, _, _ = _desired_heading_for_global_s(global_keyframes, total_path_len, start_heading_base)
+    end_heading_target, _, _ = _desired_heading_for_global_s(
+        global_keyframes, total_path_len, start_heading_base
+    )
 
     x = first_seg.ax
     y = first_seg.ay
@@ -622,7 +671,9 @@ def simulate_path(
     # Absolute end point
     end_x, end_y = anchors[-1]
 
-    def remaining_distance_from(seg_index: int, current_x: float, current_y: float, proj_s: float) -> float:
+    def remaining_distance_from(
+        seg_index: int, current_x: float, current_y: float, proj_s: float
+    ) -> float:
         if seg_index >= len(segments):
             return 0.0
         seg = segments[seg_index]
@@ -636,17 +687,17 @@ def simulate_path(
     min_trans_v = float(base_max_v)
     min_rot_omega_deg = math.degrees(float(base_max_omega))
     try:
-        for rc in getattr(path, 'ranged_constraints', []) or []:
+        for rc in getattr(path, "ranged_constraints", []) or []:
             if not isinstance(rc, RangedConstraint):
                 continue
-            if rc.key == 'max_velocity_meters_per_sec':
+            if rc.key == "max_velocity_meters_per_sec":
                 try:
                     val = float(rc.value)
                     if val > 0.0:
                         min_trans_v = min(min_trans_v, val)
                 except Exception:
                     pass
-            elif rc.key == 'max_velocity_deg_per_sec':
+            elif rc.key == "max_velocity_deg_per_sec":
                 try:
                     val = float(rc.value)
                     if val > 0.0:
@@ -677,7 +728,9 @@ def simulate_path(
         projected_s = max(0.0, min(projected_s, seg.length_m))
 
         # Get the current handoff radius for this segment
-        current_handoff_radius = _get_handoff_radius_for_segment(path, seg_idx, anchor_path_indices, default_handoff_radius)
+        current_handoff_radius = _get_handoff_radius_for_segment(
+            path, seg_idx, anchor_path_indices, default_handoff_radius
+        )
 
         # Only advance to the next segment via handoff radius if we are NOT on the last segment.
         # For the final segment, we finish based on end tolerances instead of handoff radius.
@@ -694,7 +747,9 @@ def simulate_path(
             projected_s = dot(proj_dx, proj_dy, seg.ux, seg.uy)
             projected_s = max(0.0, min(projected_s, seg.length_m))
             # Update handoff radius for the new segment
-            current_handoff_radius = _get_handoff_radius_for_segment(path, seg_idx, anchor_path_indices, default_handoff_radius)
+            current_handoff_radius = _get_handoff_radius_for_segment(
+                path, seg_idx, anchor_path_indices, default_handoff_radius
+            )
 
         if seg_idx >= len(segments):
             break
@@ -710,7 +765,9 @@ def simulate_path(
 
         # Compute desired heading using global keyframes at absolute distance along path
         global_s = cumulative_lengths[seg_idx] + projected_s
-        desired_theta, dtheta_ds, profiled_rotation = _desired_heading_for_global_s(global_keyframes, global_s, start_heading_base)
+        desired_theta, dtheta_ds, profiled_rotation = _desired_heading_for_global_s(
+            global_keyframes, global_s, start_heading_base
+        )
 
         v_proj = dot(speeds.vx_mps, speeds.vy_mps, ux, uy)
         v_curr = max(v_proj, 0.0)
@@ -720,15 +777,25 @@ def simulate_path(
         # Resolve dynamic translation constraints for this segment based on next anchor ordinal (1-based)
         next_anchor_ord_1b = seg_idx + 2
         max_v_eff = _active_translation_limit("max_velocity_meters_per_sec", next_anchor_ord_1b)
-        max_a_eff = _active_translation_limit("max_acceleration_meters_per_sec2", next_anchor_ord_1b)
+        max_a_eff = _active_translation_limit(
+            "max_acceleration_meters_per_sec2", next_anchor_ord_1b
+        )
         max_v = float(max_v_eff) if max_v_eff is not None else float(base_max_v)
         max_a = float(max_a_eff) if max_a_eff is not None else float(base_max_a)
 
         # Resolve dynamic rotation constraints based on the next rotation event ahead of current s
         max_omega_eff = _active_rotation_limit("max_velocity_deg_per_sec", global_s)
         max_alpha_eff = _active_rotation_limit("max_acceleration_deg_per_sec2", global_s)
-        max_omega = math.radians(float(max_omega_eff)) if max_omega_eff is not None else float(base_max_omega)
-        max_alpha = math.radians(float(max_alpha_eff)) if max_alpha_eff is not None else float(base_max_alpha)
+        max_omega = (
+            math.radians(float(max_omega_eff))
+            if max_omega_eff is not None
+            else float(base_max_omega)
+        )
+        max_alpha = (
+            math.radians(float(max_alpha_eff))
+            if max_alpha_eff is not None
+            else float(base_max_alpha)
+        )
 
         # Decouple translation from rotation entirely
         max_v_dyn = max_v
@@ -772,7 +839,9 @@ def simulate_path(
             max_angular_accel_radps2=max_alpha,
         )
         if abs(limited.omega_radps) > max_omega > 0.0:
-            limited = ChassisSpeeds(limited.vx_mps, limited.vy_mps, math.copysign(max_omega, limited.omega_radps))
+            limited = ChassisSpeeds(
+                limited.vx_mps, limited.vy_mps, math.copysign(max_omega, limited.omega_radps)
+            )
 
         # Advance translation; clamp to final point on last segment to avoid overshoot with zero tolerances
         step_dx = limited.vx_mps * dt_s
@@ -794,7 +863,7 @@ def simulate_path(
         t_key = round(t_s, 3)
         poses_by_time[t_key] = (float(x), float(y), float(theta))
         times_sorted.append(t_key)
-        
+
         # Add current position to trail
         trail_points.append((float(x), float(y)))
 
@@ -852,4 +921,9 @@ def simulate_path(
         uniq_times.append(tk)
 
     total_time_s = uniq_times[-1] if uniq_times else 0.0
-    return SimResult(poses_by_time=poses_by_time, times_sorted=uniq_times, total_time_s=total_time_s, trail_points=trail_points)
+    return SimResult(
+        poses_by_time=poses_by_time,
+        times_sorted=uniq_times,
+        total_time_s=total_time_s,
+        trail_points=trail_points,
+    )

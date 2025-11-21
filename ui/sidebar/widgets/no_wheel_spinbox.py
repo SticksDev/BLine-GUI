@@ -13,5 +13,3 @@ class NoWheelDoubleSpinBox(QDoubleSpinBox):
         except Exception:
             pass
         event.ignore()
-
-

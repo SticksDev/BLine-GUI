@@ -42,7 +42,7 @@ class PersistentCustomList(QListWidget):
 
     def restore_scroll_position(self):
         """Restore the remembered scroll position."""
-        if hasattr(self, '_last_scroll_value'):
+        if hasattr(self, "_last_scroll_value"):
             current_value = self.verticalScrollBar().value()
             if current_value != self._last_scroll_value:
                 # print(f"PersistentCustomList: Restoring scroll from {current_value} to {self._last_scroll_value}")
@@ -56,7 +56,7 @@ class PersistentCustomList(QListWidget):
 
     def _force_restore_scroll(self):
         """Force restore scroll position after a delay."""
-        if hasattr(self, '_last_scroll_value') and not self._preserve_scroll:
+        if hasattr(self, "_last_scroll_value") and not self._preserve_scroll:
             current_value = self.verticalScrollBar().value()
             if current_value != self._last_scroll_value:
                 # print(f"PersistentCustomList: Force restoring scroll from {current_value} to {self._last_scroll_value}")
@@ -111,7 +111,7 @@ class PersistentCustomList(QListWidget):
 
 class CustomList(QListWidget):
     """A customized QListWidget that supports drag-and-drop reordering and delete operations."""
-    
+
     reordered = Signal()  # Emitted when items are reordered via drag-and-drop
     deleteRequested = Signal()  # Emitted when delete key is pressed
 

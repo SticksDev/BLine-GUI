@@ -23,7 +23,12 @@ class ConfigDialog(QDialog):
     Shows robot dimensions and optional default values.
     """
 
-    def __init__(self, parent=None, existing_config: Optional[Dict[str, float]] = None, on_change: Optional[Callable[[str, float], None]] = None):
+    def __init__(
+        self,
+        parent=None,
+        existing_config: Optional[Dict[str, float]] = None,
+        on_change: Optional[Callable[[str, float], None]] = None,
+    ):
         super().__init__(parent)
         self.setWindowTitle("Edit Config")
         self.setModal(True)
@@ -109,10 +114,12 @@ class ConfigDialog(QDialog):
             pass
         root.addWidget(self.form_container)
 
-        def add_spin(key: str, label: str, default: float, rng: tuple[float, float], step: float = 0.01):
+        def add_spin(
+            key: str, label: str, default: float, rng: tuple[float, float], step: float = 0.01
+        ):
             # Row wrapper styled like constraint/property rows elsewhere
             row = QWidget()
-            row.setProperty('constraintRow', 'true')
+            row.setProperty("constraintRow", "true")
             row_layout = QHBoxLayout(row)
             try:
                 row_layout.setContentsMargins(8, 6, 8, 6)
@@ -145,23 +152,81 @@ class ConfigDialog(QDialog):
 
             self._spins[key] = spin
             # Live autosave via callback
-            spin.valueChanged.connect(lambda _v, k=key, w=spin: self._emit_change(k, float(w.value())))
+            spin.valueChanged.connect(
+                lambda _v, k=key, w=spin: self._emit_change(k, float(w.value()))
+            )
 
         # Robot dimensions
-        add_spin("robot_length_meters", "Robot Length (m)", cfg.get("robot_length_meters", 0.60) or 0.60, (0.05, 5.0), 0.01)
-        add_spin("robot_width_meters", "Robot Width (m)", cfg.get("robot_width_meters", 0.60) or 0.60, (0.05, 5.0), 0.01)
+        add_spin(
+            "robot_length_meters",
+            "Robot Length (m)",
+            cfg.get("robot_length_meters", 0.60) or 0.60,
+            (0.05, 5.0),
+            0.01,
+        )
+        add_spin(
+            "robot_width_meters",
+            "Robot Width (m)",
+            cfg.get("robot_width_meters", 0.60) or 0.60,
+            (0.05, 5.0),
+            0.01,
+        )
 
         # Optional defaults
-        add_spin("default_max_velocity_meters_per_sec", "Default Max Velocity (m/s)", float(cfg.get("default_max_velocity_meters_per_sec", 0.0) or 0.0), (0.0, 99999.0), 0.1)
-        add_spin("default_max_acceleration_meters_per_sec2", "Default Max Accel (m/s²)", float(cfg.get("default_max_acceleration_meters_per_sec2", 0.0) or 0.0), (0.0, 99999.0), 0.1)
-        add_spin("default_intermediate_handoff_radius_meters", "Default Handoff Radius (m)", float(cfg.get("default_intermediate_handoff_radius_meters", 0.0) or 0.0), (0.0, 99999.0), 0.05)
-        add_spin("default_max_velocity_deg_per_sec", "Default Max Rot Vel (deg/s)", float(cfg.get("default_max_velocity_deg_per_sec", 0.0) or 0.0), (0.0, 99999.0), 1.0)
-        add_spin("default_max_acceleration_deg_per_sec2", "Default Max Rot Accel (deg/s²)", float(cfg.get("default_max_acceleration_deg_per_sec2", 0.0) or 0.0), (0.0, 99999.0), 1.0)
-        add_spin("default_end_translation_tolerance_meters", "End Translation Tolerance (m)", float(cfg.get("default_end_translation_tolerance_meters", 0.05) or 0.05), (0.0, 1.0), 0.01)
-        add_spin("default_end_rotation_tolerance_deg", "End Rotation Tolerance (deg)", float(cfg.get("default_end_rotation_tolerance_deg", 2.0) or 2.0), (0.0, 180.0), 0.1)
+        add_spin(
+            "default_max_velocity_meters_per_sec",
+            "Default Max Velocity (m/s)",
+            float(cfg.get("default_max_velocity_meters_per_sec", 0.0) or 0.0),
+            (0.0, 99999.0),
+            0.1,
+        )
+        add_spin(
+            "default_max_acceleration_meters_per_sec2",
+            "Default Max Accel (m/s²)",
+            float(cfg.get("default_max_acceleration_meters_per_sec2", 0.0) or 0.0),
+            (0.0, 99999.0),
+            0.1,
+        )
+        add_spin(
+            "default_intermediate_handoff_radius_meters",
+            "Default Handoff Radius (m)",
+            float(cfg.get("default_intermediate_handoff_radius_meters", 0.0) or 0.0),
+            (0.0, 99999.0),
+            0.05,
+        )
+        add_spin(
+            "default_max_velocity_deg_per_sec",
+            "Default Max Rot Vel (deg/s)",
+            float(cfg.get("default_max_velocity_deg_per_sec", 0.0) or 0.0),
+            (0.0, 99999.0),
+            1.0,
+        )
+        add_spin(
+            "default_max_acceleration_deg_per_sec2",
+            "Default Max Rot Accel (deg/s²)",
+            float(cfg.get("default_max_acceleration_deg_per_sec2", 0.0) or 0.0),
+            (0.0, 99999.0),
+            1.0,
+        )
+        add_spin(
+            "default_end_translation_tolerance_meters",
+            "End Translation Tolerance (m)",
+            float(cfg.get("default_end_translation_tolerance_meters", 0.05) or 0.05),
+            (0.0, 1.0),
+            0.01,
+        )
+        add_spin(
+            "default_end_rotation_tolerance_deg",
+            "End Rotation Tolerance (deg)",
+            float(cfg.get("default_end_rotation_tolerance_deg", 2.0) or 2.0),
+            (0.0, 180.0),
+            0.1,
+        )
 
         # Buttons styled to fit dark UI
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, orientation=Qt.Horizontal, parent=self)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, orientation=Qt.Horizontal, parent=self
+        )
         try:
             buttons.setStyleSheet(
                 """
@@ -206,5 +271,3 @@ class ConfigDialog(QDialog):
                 pass
             finally:
                 spin.blockSignals(False)
-
-

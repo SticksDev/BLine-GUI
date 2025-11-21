@@ -1,15 +1,25 @@
 """Transport (playback) controls overlay widget builder for the canvas."""
+
 from __future__ import annotations
 from typing import Optional, Callable, TYPE_CHECKING
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QSlider, QLabel, QGraphicsProxyWidget, QGraphicsItem
+from PySide6.QtWidgets import (
+    QWidget,
+    QHBoxLayout,
+    QPushButton,
+    QSlider,
+    QLabel,
+    QGraphicsProxyWidget,
+    QGraphicsItem,
+)
 from PySide6.QtCore import Qt, QTimer, QRect
 from PySide6.QtGui import QPen, QColor
 
 if TYPE_CHECKING:
     from ui.canvas.view import CanvasView
 
+
 class TransportControls:
-    def __init__(self, canvas_view: 'CanvasView'):
+    def __init__(self, canvas_view: "CanvasView"):
         self.canvas_view = canvas_view
         self.proxy: Optional[QGraphicsProxyWidget] = None
         self.widget: Optional[QWidget] = None
@@ -29,7 +39,7 @@ class TransportControls:
         except Exception:
             pass
         layout = QHBoxLayout(w)
-        layout.setContentsMargins(8,6,8,6)
+        layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(10)
 
         # Outer container to visually match sidebar rounded rows
@@ -39,7 +49,7 @@ class TransportControls:
         except Exception:
             pass
         container_layout = QHBoxLayout(container)
-        container_layout.setContentsMargins(8,6,0,6)
+        container_layout.setContentsMargins(8, 6, 0, 6)
         container_layout.setSpacing(8)
         try:
             container.setStyleSheet(
@@ -58,12 +68,14 @@ class TransportControls:
         btn.setFixedWidth(28)
         btn.clicked.connect(self.canvas_view._toggle_play_pause)
         try:
-            btn.setStyleSheet("QPushButton { border: none; } QPushButton:hover { background: #555; border-radius: 4px; }")
+            btn.setStyleSheet(
+                "QPushButton { border: none; } QPushButton:hover { background: #555; border-radius: 4px; }"
+            )
         except Exception:
             pass
 
         slider = QSlider(Qt.Horizontal)
-        slider.setRange(0,0)
+        slider.setRange(0, 0)
         slider.setMinimumWidth(80)  # 25% of previous size (300px)
         slider.setSingleStep(1)  # Fine control: 0.1ms steps (10x more fine-grained)
         slider.setPageStep(100)  # Fine page control: 10ms steps
@@ -123,7 +135,8 @@ class TransportControls:
         container_layout.addWidget(slider, 1)
         container_layout.addWidget(lbl)
         layout.addWidget(container)
-        proxy = QGraphicsProxyWidget(); proxy.setWidget(w)
+        proxy = QGraphicsProxyWidget()
+        proxy.setWidget(w)
         proxy.setZValue(30)
         proxy.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
         self.canvas_view.graphics_scene.addItem(proxy)

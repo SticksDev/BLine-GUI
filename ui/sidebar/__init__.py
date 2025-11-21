@@ -1,4 +1,3 @@
 from .sidebar import Sidebar
 
-__all__ = ['Sidebar']
-
+__all__ = ["Sidebar"]

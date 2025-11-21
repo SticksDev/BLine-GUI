@@ -12,7 +12,9 @@ def get_translation_position(element: Any) -> Tuple[float, float]:
     if isinstance(element, TranslationTarget):
         return float(element.x_meters), float(element.y_meters)
     elif isinstance(element, Waypoint):
-        return float(element.translation_target.x_meters), float(element.translation_target.y_meters)
+        return float(element.translation_target.x_meters), float(
+            element.translation_target.y_meters
+        )
     else:
         return 0.0, 0.0
 
@@ -20,7 +22,7 @@ def get_translation_position(element: Any) -> Tuple[float, float]:
 def clamp_from_metadata(key: str, value: float) -> float:
     """Clamp a value based on metadata range constraints."""
     meta = SPINNER_METADATA.get(key, {})
-    value_min, value_max = meta.get('range', (None, None))
+    value_min, value_max = meta.get("range", (None, None))
     if value_min is None or value_max is None:
         return value
     if value < value_min:
@@ -41,7 +43,7 @@ def get_element_position(element: Any, idx: int, path_elements: List[Any]) -> Tu
         ax, ay = prev_pos
         bx, by = next_pos
         try:
-            t = float(getattr(element, 't_ratio', 0.0))
+            t = float(getattr(element, "t_ratio", 0.0))
         except Exception:
             t = 0.0
         if t < 0.0:
@@ -52,7 +54,9 @@ def get_element_position(element: Any, idx: int, path_elements: List[Any]) -> Tu
     return 0.0, 0.0
 
 
-def get_neighbor_positions(idx: int, path_elements: List[Any]) -> Tuple[Optional[Tuple[float, float]], Optional[Tuple[float, float]]]:
+def get_neighbor_positions(
+    idx: int, path_elements: List[Any]
+) -> Tuple[Optional[Tuple[float, float]], Optional[Tuple[float, float]]]:
     """Get positions of neighboring anchor elements (TranslationTarget or Waypoint)."""
     # prev
     prev_pos = None
@@ -81,10 +85,7 @@ def get_element_bounding_radius(element: Any, robot_length_m: float, robot_width
 
 
 def project_point_between_neighbors(
-    idx: int, 
-    x_m: float, 
-    y_m: float, 
-    path_elements: List[Any]
+    idx: int, x_m: float, y_m: float, path_elements: List[Any]
 ) -> Tuple[float, float]:
     """Project a point onto the line between neighboring anchor elements."""
     prev_pos, next_pos = get_neighbor_positions(idx, path_elements)
@@ -104,19 +105,19 @@ def project_point_between_neighbors(
         t = 1.0
     proj_x = ax + t * dx
     proj_y = ay + t * dy
-    proj_x = clamp_from_metadata('x_meters', proj_x)
-    proj_y = clamp_from_metadata('y_meters', proj_y)
+    proj_x = clamp_from_metadata("x_meters", proj_x)
+    proj_y = clamp_from_metadata("y_meters", proj_y)
     return proj_x, proj_y
 
 
 def get_safe_position_for_rotation(rotation_target, elems, index) -> Tuple[float, float]:
     """Get a safe position for converting a RotationTarget to TranslationTarget.
-    
+
     Args:
         rotation_target: The RotationTarget being converted
         elems: List of all path elements
         index: Index of the rotation_target in elems
-        
+
     Returns:
         Tuple[float, float]: (x_meters, y_meters) position
     """
@@ -129,7 +130,7 @@ def get_safe_position_for_rotation(rotation_target, elems, index) -> Tuple[float
                 return elem.x_meters, elem.y_meters
             elif isinstance(elem, Waypoint):
                 return elem.translation_target.x_meters, elem.translation_target.y_meters
-    
+
     # If no nearby position found, use a reasonable default
     # Try to get field center or a reasonable starting position
     field_center_x = 8.0  # Rough center of FRC field (FIELD_LENGTH_METERS / 2)

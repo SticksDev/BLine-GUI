@@ -8,7 +8,7 @@ from typing import Optional, Tuple
 
 class RangeSlider(QWidget):
     """A custom range slider widget for selecting a range between min and max values."""
-    
+
     rangeChanged = Signal(int, int)
     interactionFinished = Signal(int, int)
 
@@ -25,14 +25,14 @@ class RangeSlider(QWidget):
         # Minimum number of notches the handles must be apart. 1 prevents overlap.
         self._min_separation: int = 1
         self.setMinimumHeight(22)
-        
+
         try:
             self.setEnabled(True)
             self.setFocusPolicy(Qt.StrongFocus)
             self.setAttribute(Qt.WA_TransparentForMouseEvents, False)
         except Exception:
             pass
-            
+
         try:
             self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             self.setMouseTracking(True)
@@ -96,17 +96,17 @@ class RangeSlider(QWidget):
             return low, high
 
         # Need to adjust values to satisfy separation
-        if self._dragging == 'low':
+        if self._dragging == "low":
             # Keep high as requested, move low leftwards
             high = min(high, self._max)
             low = min(high - sep, self._max - sep)
             low = max(low, self._min)
-        elif self._dragging == 'high':
+        elif self._dragging == "high":
             # Keep low as requested, move high rightwards
             low = max(low, self._min)
             high = max(low + sep, self._min + sep)
             high = min(high, self._max)
-        elif self._dragging == 'band':
+        elif self._dragging == "band":
             # Maintain at least sep width while respecting bounds
             low = max(low, self._min)
             # Prefer expanding to the right if possible
@@ -168,13 +168,13 @@ class RangeSlider(QWidget):
         rect = self.contentsRect()
         track_h = max(3, rect.height() // 6)
         cy = rect.center().y()
-        
+
         # Track
-        pen = QPen(QColor('#666666'), 1)
+        pen = QPen(QColor("#666666"), 1)
         painter.setPen(pen)
-        painter.setBrush(QColor('#444444'))
+        painter.setBrush(QColor("#444444"))
         painter.drawRect(QRect(rect.left(), cy - track_h // 2, rect.width(), track_h))
-        
+
         # Tick marks at integer positions
         try:
             total = max(1, self._max - self._min)
@@ -183,32 +183,32 @@ class RangeSlider(QWidget):
             if total > 20:
                 # choose a step that results in ~20 ticks
                 step = max(1, (total // 20))
-            painter.setPen(QPen(QColor('#aaaaaa'), 1))
+            painter.setPen(QPen(QColor("#aaaaaa"), 1))
             tick_h = max(4, track_h)
             for v in range(self._min, self._max + 1, step):
                 x = self._value_to_pos(v)
                 painter.drawLine(x, cy - tick_h, x, cy + tick_h)
         except Exception:
             pass
-            
+
         # Selected range
         x1 = self._value_to_pos(self._low)
         x2 = self._value_to_pos(self._high)
-        painter.setBrush(QColor('#15c915'))
+        painter.setBrush(QColor("#15c915"))
         painter.setPen(Qt.NoPen)
         painter.drawRect(QRect(min(x1, x2), cy - track_h // 2, abs(x2 - x1), track_h))
-        
+
         # Handles
         handle_w = max(8, track_h * 2)
-        painter.setBrush(QColor('#dddddd'))
-        painter.setPen(QPen(QColor('#222222'), 1))
+        painter.setBrush(QColor("#dddddd"))
+        painter.setPen(QPen(QColor("#222222"), 1))
         painter.drawRect(QRect(x1 - handle_w // 2, cy - track_h, handle_w, track_h * 2))
         painter.drawRect(QRect(x2 - handle_w // 2, cy - track_h, handle_w, track_h * 2))
 
     def mousePressEvent(self, event):
         """Handle mouse press events to start dragging."""
-        x = int(event.position().x() if hasattr(event, 'position') else event.x())
-        y = int(event.position().y() if hasattr(event, 'position') else event.y())
+        x = int(event.position().x() if hasattr(event, "position") else event.x())
+        y = int(event.position().y() if hasattr(event, "position") else event.y())
         x1 = self._value_to_pos(self._low)
         x2 = self._value_to_pos(self._high)
         if x1 > x2:
@@ -217,35 +217,43 @@ class RangeSlider(QWidget):
         cy = rect.center().y()
         track_h = max(3, rect.height() // 6)
         handle_w = max(8, track_h * 2)
-        
+
         # Make clickable area larger than visual handle for easier dragging
         click_padding = 4
-        low_rect = QRect(x1 - handle_w // 2 - click_padding, cy - track_h - click_padding, 
-                       handle_w + 2 * click_padding, track_h * 2 + 2 * click_padding)
-        high_rect = QRect(x2 - handle_w // 2 - click_padding, cy - track_h - click_padding, 
-                        handle_w + 2 * click_padding, track_h * 2 + 2 * click_padding)
-                        
+        low_rect = QRect(
+            x1 - handle_w // 2 - click_padding,
+            cy - track_h - click_padding,
+            handle_w + 2 * click_padding,
+            track_h * 2 + 2 * click_padding,
+        )
+        high_rect = QRect(
+            x2 - handle_w // 2 - click_padding,
+            cy - track_h - click_padding,
+            handle_w + 2 * click_padding,
+            track_h * 2 + 2 * click_padding,
+        )
+
         if low_rect.contains(x, y):
-            self._dragging = 'low'
+            self._dragging = "low"
             self._setValuesInternal(self._pos_to_value(x), self._high)
         elif high_rect.contains(x, y):
-            self._dragging = 'high'
+            self._dragging = "high"
             self._setValuesInternal(self._low, self._pos_to_value(x))
         elif x1 <= x <= x2:
             # Drag band
-            self._dragging = 'band'
+            self._dragging = "band"
             self._press_value = self._pos_to_value(x)
             self._band_width = max(0, self._high - self._low)
             self._press_low = self._low
         else:
             # Click on track outside -> move nearest handle
             if abs(x - x1) <= abs(x - x2):
-                self._dragging = 'low'
+                self._dragging = "low"
                 self._setValuesInternal(self._pos_to_value(x), self._high)
             else:
-                self._dragging = 'high'
+                self._dragging = "high"
                 self._setValuesInternal(self._low, self._pos_to_value(x))
-                
+
         # Accept event, focus, and emit preview
         try:
             event.accept()
@@ -264,13 +272,13 @@ class RangeSlider(QWidget):
         """Handle mouse move events during dragging."""
         if not self._dragging:
             return
-        x = int(event.position().x() if hasattr(event, 'position') else event.x())
+        x = int(event.position().x() if hasattr(event, "position") else event.x())
         prev_low, prev_high = self._low, self._high
-        if self._dragging == 'low':
+        if self._dragging == "low":
             self._setValuesInternal(self._pos_to_value(x), self._high)
-        elif self._dragging == 'high':
+        elif self._dragging == "high":
             self._setValuesInternal(self._low, self._pos_to_value(x))
-        elif self._dragging == 'band':
+        elif self._dragging == "band":
             curr_val = self._pos_to_value(x)
             delta = curr_val - self._press_value
             new_low = self._press_low + delta
@@ -301,11 +309,11 @@ class RangeSlider(QWidget):
             event.accept()
         except Exception:
             pass
-        
+
         # Only emit signals if we were actually dragging
         was_dragging = self._dragging is not None
         self._dragging = None
-        
+
         if was_dragging:
             try:
                 self.rangeChanged.emit(self._low, self._high)
