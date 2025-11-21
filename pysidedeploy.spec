@@ -67,7 +67,7 @@ macos.permissions =
 mode = onefile
 
 # specify any extra nuitka arguments
-extra_args = --include-data-dir=assets=assets
+extra_args = --include-data-dir=assets=assets --disable-ccache
 
 [buildozer]
 
