@@ -1,4 +1,4 @@
-name: Build Packages
+name: Cross-Platform Packages
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  package:
+  create-bundles:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
