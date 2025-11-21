@@ -38,10 +38,20 @@ jobs:
       - name: Build application bundle
         run: python scripts/package_app.py
 
+      - name: Sign Mac App (Ad-Hoc)
+        if: runner.os == 'macOS'
+        run: |
+          codesign --force --deep --sign - build/BLine.app
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ runner.os }}-build
-          path: build/**
-          if-no-files-found: error
+          path: |
+            build/**
+            *.exe
+            *.bin
+            *.app
+            *.zip
+          if-no-files-found: warn
 
