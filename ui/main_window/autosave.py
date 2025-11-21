@@ -26,14 +26,8 @@ class AutosaveController:
         self.status_label.setAlignment(Qt.AlignCenter)
         self.status_label.setStyleSheet(self._saved_style())
 
-        self.indicator = QLabel("💾")
-        self.indicator.setToolTip("Autosave active")
-        self.indicator.setVisible(False)
-        self.indicator.setStyleSheet("color: #666666; font-size: 12px; margin-left: 5px;")
-
         status_bar = window.statusBar
         status_bar.addPermanentWidget(self.status_label, stretch=0)
-        status_bar.addWidget(self.indicator)
 
     def connect_triggers(self, sidebar: "Sidebar", canvas: "CanvasView") -> None:
         sidebar.modelChanged.connect(self.schedule)
@@ -65,16 +59,11 @@ class AutosaveController:
             self._show_feedback(f"Autosave failed: {exc}", error=True)
 
     def _show_indicator(self) -> None:
-        self.indicator.setVisible(True)
-        self.indicator.setStyleSheet("color: #d4a76a; font-size: 12px; margin-left: 5px;")
-        self.indicator.setToolTip("Autosave in progress...")
-
         self.status_label.setText("💾 Saving...")
         self.status_label.setStyleSheet(self._saving_style())
         self.status_label.setAlignment(Qt.AlignCenter)
 
     def _hide_indicator(self) -> None:
-        self.indicator.setVisible(False)
         self._reset_status()
 
     def _show_feedback(self, message: str, error: bool = False) -> None:

@@ -3,7 +3,7 @@ ROOT_DIR := $(shell pwd)
 VENV_DIR ?= $(ROOT_DIR)/.venv
 ACTIVATE := . $(VENV_DIR)/bin/activate
 
-.PHONY: help install run fmt lint test clean
+.PHONY: help install run fmt lint test package clean
 
 help:
 	@echo "Available targets:"
@@ -12,6 +12,7 @@ help:
 	@echo "  fmt      - run black and ruff format"
 	@echo "  lint     - run ruff lint and mypy"
 	@echo "  test     - run pytest suite"
+	@echo "  package  - build platform-specific bundles via PySide deploy"
 	@echo "  clean    - remove the virtualenv"
 
 $(VENV_DIR)/bin/activate:
@@ -34,6 +35,9 @@ lint: install
 
 test: install
 	$(ACTIVATE) && pytest
+
+package: install
+	$(ACTIVATE) && python scripts/package_app.py
 
 clean:
 	rm -rf $(VENV_DIR)

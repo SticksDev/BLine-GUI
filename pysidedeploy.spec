@@ -4,24 +4,24 @@
 title = BLine
 
 # project root directory. default = The parent directory of input_file
-project_dir = /Users/edan/FRC/FRC-PTP-GUI
+project_dir = .
 
 # source file entry point path. default = main.py
-input_file = /Users/edan/FRC/FRC-PTP-GUI/main.py
+input_file = main.py
 
 # directory where the executable output is generated
-exec_directory = .
+exec_directory = build
 
 # path to the project file relative to project_dir
 project_file = 
 
 # application icon
-icon = /Users/edan/FRC/FRC-PTP-GUI/assets/rebel_logo.png
+icon = assets/rebel_logo.png
 
 [python]
 
-# python path
-python_path = /Users/edan/FRC/FRC-PTP-GUI/venv/bin/python3.13
+# python path (leave empty to use the current interpreter)
+python_path =
 
 # python packages to install
 packages = Nuitka==2.6.8
