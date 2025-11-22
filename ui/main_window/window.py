@@ -531,7 +531,11 @@ class MainWindow(WindowEventMixin, QMainWindow):
         # Begin a config-edit session: capture original for undo on first live change
         self._config_edit_old_config = copy.deepcopy(old_config)
         self._config_undo_recorded = False
-        cfg = self.project_manager.load_config()
+        cfg_obj = self.project_manager.load_config()
+        if hasattr(cfg_obj, "to_dict"):
+            cfg = cfg_obj.to_dict()
+        else:
+            cfg = self.project_manager.config_as_dict()
         dlg = ConfigDialog(self, cfg, on_change=self._on_config_live_change)
         result = dlg.exec()
         if result == QDialog.Accepted:

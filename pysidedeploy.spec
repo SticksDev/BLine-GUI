@@ -21,7 +21,7 @@ icon = assets/rebel_logo.png
 [python]
 
 # python path (leave empty to use the current interpreter)
-python_path = 
+python_path = /Users/edan/FRC/FRC-PTP-GUI/.venv-py313/bin/python3.13
 
 # python packages to install
 packages = Nuitka==2.6.8

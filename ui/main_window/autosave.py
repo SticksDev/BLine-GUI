@@ -32,6 +32,11 @@ class AutosaveController:
         status_bar = window.statusBar
         status_bar.addPermanentWidget(self.status_label, stretch=0)
 
+        # Status reset timer keeps the label updates scoped to the controller lifetime.
+        self._reset_timer = QTimer(window)
+        self._reset_timer.setSingleShot(True)
+        self._reset_timer.timeout.connect(self._reset_status)
+
     def connect_triggers(self, sidebar: "Sidebar", canvas: "CanvasView") -> None:
         sidebar.modelChanged.connect(self.schedule)
         sidebar.modelStructureChanged.connect(self.schedule)
@@ -67,6 +72,7 @@ class AutosaveController:
         self.status_label.setAlignment(Qt.AlignCenter)
 
     def _hide_indicator(self) -> None:
+        self._reset_timer.stop()
         self._reset_status()
 
     def _show_feedback(self, message: str, error: bool = False) -> None:
@@ -74,17 +80,21 @@ class AutosaveController:
             self.status_label.setText("❌ Error")
             self.status_label.setStyleSheet(self._error_style())
             self.status_label.setAlignment(Qt.AlignCenter)
-            QTimer.singleShot(2000, self._reset_status)
+            self._reset_timer.start(2000)
         else:
             self.status_label.setText("✅ Saved")
             self.status_label.setStyleSheet(self._success_style())
             self.status_label.setAlignment(Qt.AlignCenter)
-            QTimer.singleShot(1500, self._reset_status)
+            self._reset_timer.start(1500)
 
     def _reset_status(self) -> None:
-        self.status_label.setText("Saved")
-        self.status_label.setStyleSheet(self._saved_style())
-        self.status_label.setAlignment(Qt.AlignCenter)
+        try:
+            self.status_label.setText("Saved")
+            self.status_label.setStyleSheet(self._saved_style())
+            self.status_label.setAlignment(Qt.AlignCenter)
+        except RuntimeError:
+            # The status label can be deleted during shutdown; ignore late updates.
+            pass
 
     @staticmethod
     def _saving_style() -> str:
