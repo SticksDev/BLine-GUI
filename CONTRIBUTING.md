@@ -5,7 +5,7 @@
    python -m venv .venv
    source .venv/bin/activate
    pip install -r requirements.txt
-   pre-commit install  # optional but recommended
+   pip install pre-commit # optional but recommended
    ```
 
 2. **Run checks locally**
