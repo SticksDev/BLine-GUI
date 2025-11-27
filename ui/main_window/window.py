@@ -45,6 +45,7 @@ from ui.qt_compat import Qt, QSizePolicy, QKeySequence, QPainter, QMessageBox
 class MainWindow(WindowEventMixin, QMainWindow):
     def __init__(self):
         super().__init__()  # Call parent init
+        self.setAttribute(Qt.WA_StyledBackground, True)
         self.setWindowTitle("")
         self.resize(1000, 600)
 
@@ -64,6 +65,9 @@ class MainWindow(WindowEventMixin, QMainWindow):
         build_menu_bar(self)
 
         central = QWidget()  # Blank container for content
+        central.setObjectName("mainCentralWidget")
+        central.setAttribute(Qt.WA_StyledBackground, True)
+        central.setAutoFillBackground(True)
         self.setCentralWidget(central)
         layout = QHBoxLayout(central)  # Horizontal split
         try:

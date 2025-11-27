@@ -540,9 +540,8 @@ def simulate_path(
         )
     )
 
-def _active_translation_limit(
-    path: Path, key: str, next_anchor_ord: int
-) -> Optional[float]:
+
+def _active_translation_limit(path: Path, key: str, next_anchor_ord: int) -> Optional[float]:
     """Return the most restrictive translation constraint (minimum value) active
     for the given next anchor ordinal (1-based). If none match, returns None.
     """
@@ -843,7 +842,9 @@ def simulate_path(
 
         # Resolve dynamic translation constraints for this segment based on next anchor ordinal (1-based)
         next_anchor_ord_1b = seg_idx + 2
-        max_v_eff = _active_translation_limit(path, "max_velocity_meters_per_sec", next_anchor_ord_1b)
+        max_v_eff = _active_translation_limit(
+            path, "max_velocity_meters_per_sec", next_anchor_ord_1b
+        )
         max_a_eff = _active_translation_limit(
             path, "max_acceleration_meters_per_sec2", next_anchor_ord_1b
         )
@@ -851,8 +852,12 @@ def simulate_path(
         max_a = float(max_a_eff) if max_a_eff is not None else float(base_max_a)
 
         # Resolve dynamic rotation constraints based on the next rotation event ahead of current s
-        max_omega_eff = _active_rotation_limit(path, global_keyframes, "max_velocity_deg_per_sec", global_s)
-        max_alpha_eff = _active_rotation_limit(path, global_keyframes, "max_acceleration_deg_per_sec2", global_s)
+        max_omega_eff = _active_rotation_limit(
+            path, global_keyframes, "max_velocity_deg_per_sec", global_s
+        )
+        max_alpha_eff = _active_rotation_limit(
+            path, global_keyframes, "max_acceleration_deg_per_sec2", global_s
+        )
         max_omega = (
             math.radians(float(max_omega_eff))
             if max_omega_eff is not None
