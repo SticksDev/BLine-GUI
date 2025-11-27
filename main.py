@@ -57,7 +57,9 @@ def set_dark_theme(app: QApplication) -> None:
     palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
     palette.setColor(QPalette.ColorRole.PlaceholderText, QColor(150, 150, 150))
     palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(115, 115, 115))
-    palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(115, 115, 115))
+    palette.setColor(
+        QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(115, 115, 115)
+    )
 
     app.setPalette(palette)
     app.setStyleSheet(DARK_STYLE_SHEET)
