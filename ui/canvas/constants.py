@@ -5,8 +5,8 @@ from PySide6.QtGui import QPen, QColor
 
 from ui.qt_compat import Qt
 
-FIELD_LENGTH_METERS = 16.54
-FIELD_WIDTH_METERS = 8.21
+FIELD_LENGTH_METERS = 17.55
+FIELD_WIDTH_METERS = 8.05
 
 # Element visual constants (in meters)
 ELEMENT_RECT_WIDTH_M = 0.60
@@ -36,4 +36,5 @@ SIMULATION_UPDATE_INTERVAL_MS = 20
 SIMULATION_DEBOUNCE_INTERVAL_MS = 200
 
 # Default field center for element positioning
-FIELD_CENTER_X_METERS = 8.0  # Rough center of FRC field
+FIELD_CENTER_X_METERS = FIELD_LENGTH_METERS / 2.0
+FIELD_CENTER_Y_METERS = FIELD_WIDTH_METERS / 2.0

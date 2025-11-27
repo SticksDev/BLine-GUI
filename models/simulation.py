@@ -488,59 +488,6 @@ def _get_handoff_radius_for_segment(
     return default_radius
 
 
-def simulate_path(
-    path: Path,
-    config: Optional[Dict] = None,
-    dt_s: float = 0.02,
-) -> SimResult:
-    cfg = config or {}
-    segments, anchors, anchor_path_indices = _build_segments(path)
-
-    poses_by_time: Dict[float, Tuple[float, float, float]] = {}
-    times_sorted: List[float] = []
-    trail_points: List[Tuple[float, float]] = []
-
-    if len(anchors) < 2 or len(segments) == 0:
-        if anchors:
-            x0, y0 = anchors[0]
-            poses_by_time[0.0] = (x0, y0, 0.0)
-            times_sorted = [0.0]
-            trail_points = [(x0, y0)]
-        return SimResult(
-            poses_by_time=poses_by_time,
-            times_sorted=times_sorted,
-            total_time_s=0.0,
-            trail_points=trail_points,
-        )
-
-    c = getattr(path, "constraints", None)
-    base_max_v = _resolve_constraint(
-        getattr(c, "max_velocity_meters_per_sec", None),
-        cfg.get("default_max_velocity_meters_per_sec"),
-        3.0,
-    )
-    base_max_a = _resolve_constraint(
-        getattr(c, "max_acceleration_meters_per_sec2", None),
-        cfg.get("default_max_acceleration_meters_per_sec2"),
-        2.5,
-    )
-
-    base_max_omega = math.radians(
-        _resolve_constraint(
-            getattr(c, "max_velocity_deg_per_sec", None),
-            cfg.get("default_max_velocity_deg_per_sec"),
-            180.0,
-        )
-    )
-    base_max_alpha = math.radians(
-        _resolve_constraint(
-            getattr(c, "max_acceleration_deg_per_sec2", None),
-            cfg.get("default_max_acceleration_deg_per_sec2"),
-            360.0,
-        )
-    )
-
-
 def _active_translation_limit(path: Path, key: str, next_anchor_ord: int) -> Optional[float]:
     """Return the most restrictive translation constraint (minimum value) active
     for the given next anchor ordinal (1-based). If none match, returns None.

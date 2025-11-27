@@ -3,7 +3,13 @@
 import math
 from typing import Optional, Tuple, Any, List
 from models.path_model import TranslationTarget, RotationTarget, Waypoint
-from ui.canvas import ELEMENT_CIRCLE_RADIUS_M, ELEMENT_RECT_WIDTH_M, ELEMENT_RECT_HEIGHT_M
+from ui.canvas import (
+    ELEMENT_CIRCLE_RADIUS_M,
+    ELEMENT_RECT_WIDTH_M,
+    ELEMENT_RECT_HEIGHT_M,
+    FIELD_CENTER_X_METERS,
+    FIELD_CENTER_Y_METERS,
+)
 from .constants import SPINNER_METADATA
 
 
@@ -139,6 +145,4 @@ def get_safe_position_for_rotation(rotation_target, elems, index) -> Tuple[float
 
     # If no nearby position found, use a reasonable default
     # Try to get field center or a reasonable starting position
-    field_center_x = 8.0  # Rough center of FRC field (FIELD_LENGTH_METERS / 2)
-    field_center_y = 4.0  # Rough center of FRC field (FIELD_WIDTH_METERS / 2)
-    return field_center_x, field_center_y
+    return float(FIELD_CENTER_X_METERS), float(FIELD_CENTER_Y_METERS)
