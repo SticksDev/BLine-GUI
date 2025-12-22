@@ -374,8 +374,15 @@ class MainWindow(WindowEventMixin, QMainWindow):
 
     def _apply_robot_dims_from_config(self, cfg):
         try:
-            length_m = float(cfg.get("robot_length_meters", 0.60) or 0.60)
-            width_m = float(cfg.get("robot_width_meters", 0.60) or 0.60)
+            # Support both ProjectConfig dataclass and dict
+            if hasattr(cfg, 'robot_length_meters'):
+                length_m = float(cfg.robot_length_meters or 0.60)
+                width_m = float(cfg.robot_width_meters or 0.60)
+            elif hasattr(cfg, 'get'):
+                length_m = float(cfg.get("robot_length_meters", 0.60) or 0.60)
+                width_m = float(cfg.get("robot_width_meters", 0.60) or 0.60)
+            else:
+                length_m, width_m = 0.60, 0.60
         except Exception:
             length_m, width_m = 0.60, 0.60
         self.canvas.set_robot_dimensions(length_m, width_m)
