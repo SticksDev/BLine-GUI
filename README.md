@@ -26,6 +26,8 @@ pipx ensurepath
 pipx install git+https://github.com/edanliahovetsky/BLine-GUI.git
 ```
 
+If you see an extra terminal window when launching BLine from a shortcut, reinstall after updating (newer builds install a GUI launcher on Windows).
+
 **If you get a PySide6 dependency/build error on Windows:** pipx is probably using a Python version that PySide6 doesn’t have wheels for on Windows yet. Install **Python 3.12** (recommended) or **3.11** from [python.org](https://www.python.org/downloads/windows/) and tell pipx to use it:
 
 ```powershell

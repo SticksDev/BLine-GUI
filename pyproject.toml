@@ -15,7 +15,7 @@ dependencies = [
     "pyshortcuts>=1.9",
 ]
 
-[project.scripts]
+[project.gui-scripts]
 bline = "main:main"
 
 [project.optional-dependencies]
