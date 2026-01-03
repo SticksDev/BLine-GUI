@@ -50,6 +50,7 @@ def get_icon_for_shortcut() -> str | None:
     import platform
     import subprocess
     import tempfile
+    import shutil
     
     png_path = find_icon_path()
     if not png_path or not png_path.exists():
@@ -103,8 +104,22 @@ def get_icon_for_shortcut() -> str | None:
         return None
     
     elif platform.system() == "Windows":
-        # Windows prefers .ico but can sometimes use .png
-        # For best results, we'd convert to .ico, but .png often works
+        # Windows shortcuts generally want an .ico for reliable display.
+        try:
+            ico_path = Path(tempfile.gettempdir()) / "bline_icon.ico"
+            # Generate an .ico using Qt (no extra deps).
+            from PySide6.QtGui import QImage
+
+            img = QImage(str(png_path))
+            if img.isNull():
+                return None
+            # Prefer a 256x256 icon if available; Qt will scale as needed.
+            img = img.scaled(256, 256, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            if img.save(str(ico_path), "ICO") and ico_path.exists():
+                return str(ico_path)
+        except Exception:
+            pass
+        # Fallback to PNG path.
         return str(png_path)
     
     else:
@@ -228,23 +243,32 @@ def create_shortcut_dialog() -> int:
 
     layout.addSpacing(10)
 
-    # Checkboxes for shortcut locations - platform-specific text
+    # Checkboxes for shortcut locations - platform-specific
     import platform
-    
+
     desktop_cb = QCheckBox("Desktop")
     desktop_cb.setChecked(True)
     layout.addWidget(desktop_cb)
 
-    if platform.system() == "Darwin":
+    system = platform.system()
+    startmenu_cb: QCheckBox | None = None
+    startmenu_text: str | None = None
+
+    if system == "Darwin":
         startmenu_text = "Applications (/Applications)"
-    elif platform.system() == "Windows":
-        startmenu_text = "Start Menu"
+        startmenu_cb = QCheckBox(startmenu_text)
+        startmenu_cb.setChecked(True)
+        layout.addWidget(startmenu_cb)
+    elif system == "Windows":
+        # Windows Taskbar pinning is not reliably supported programmatically.
+        # We only offer a Desktop shortcut here.
+        startmenu_cb = None
+        startmenu_text = None
     else:
         startmenu_text = "Applications menu"
-    
-    startmenu_cb = QCheckBox(startmenu_text)
-    startmenu_cb.setChecked(True)
-    layout.addWidget(startmenu_cb)
+        startmenu_cb = QCheckBox(startmenu_text)
+        startmenu_cb.setChecked(True)
+        layout.addWidget(startmenu_cb)
 
     layout.addStretch()
 
@@ -263,7 +287,8 @@ def create_shortcut_dialog() -> int:
     layout.addLayout(button_layout)
 
     def on_create():
-        if not desktop_cb.isChecked() and not startmenu_cb.isChecked():
+        startmenu_checked = bool(startmenu_cb and startmenu_cb.isChecked())
+        if not desktop_cb.isChecked() and not startmenu_checked:
             QMessageBox.warning(dialog, "No Location", "Please select at least one location.")
             return
 
@@ -277,7 +302,6 @@ def create_shortcut_dialog() -> int:
                 )
                 return
 
-            system = platform.system()
             icon = get_icon_for_shortcut()
 
             # macOS: pyshortcuts only creates Desktop .app bundles and does not support "Start Menu/Applications".
@@ -291,7 +315,7 @@ def create_shortcut_dialog() -> int:
                         launch_cmd=launch_cmd,
                         icns_path=icon,
                     )
-                if startmenu_cb.isChecked():
+                if startmenu_checked:
                     # Prefer the global /Applications (what users see in Finder sidebar).
                     # If we can't write there, fall back to ~/Applications.
                     system_apps_dir = Path("/Applications")
@@ -314,14 +338,14 @@ def create_shortcut_dialog() -> int:
                     description="FRC Robot Path Planning Tool",
                     icon=icon,
                     desktop=desktop_cb.isChecked(),
-                    startmenu=startmenu_cb.isChecked(),
+                    startmenu=startmenu_checked,
                     terminal=False,
                 )
             
             locations = []
             if desktop_cb.isChecked():
                 locations.append("Desktop")
-            if startmenu_cb.isChecked():
+            if startmenu_checked and startmenu_text:
                 locations.append(startmenu_text)
             
             message = f"Shortcut created in: {', '.join(locations)}"
