@@ -18,6 +18,11 @@ __pycache__/
 env/
 venv/
 
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
 # Cursor/Editor artifacts
 *.log
 

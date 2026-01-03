@@ -190,9 +190,27 @@ def create_shortcut_dialog() -> int:
             # Get the icon in the correct format for this platform
             icon = get_icon_for_shortcut()
             
-            # Create the shortcut
+            # Find the bline command - check common locations
+            import shutil
+            bline_cmd = shutil.which("bline")
+            
+            if not bline_cmd:
+                # Check pipx location explicitly
+                pipx_bin = Path.home() / ".local" / "bin" / "bline"
+                if pipx_bin.exists():
+                    bline_cmd = str(pipx_bin)
+            
+            if not bline_cmd:
+                QMessageBox.critical(
+                    dialog,
+                    "Not Installed",
+                    "BLine is not installed. Please install with:\n\npipx install bline"
+                )
+                return
+            
+            # Create the shortcut with the full path
             make_shortcut(
-                script="bline",
+                script=bline_cmd,
                 name="BLine",
                 description="FRC Robot Path Planning Tool",
                 icon=icon,
