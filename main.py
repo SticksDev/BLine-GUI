@@ -50,7 +50,6 @@ def get_icon_for_shortcut() -> str | None:
     import platform
     import subprocess
     import tempfile
-    import shutil
     
     png_path = find_icon_path()
     if not png_path or not png_path.exists():
@@ -106,7 +105,10 @@ def get_icon_for_shortcut() -> str | None:
     elif platform.system() == "Windows":
         # Windows shortcuts generally want an .ico for reliable display.
         try:
-            ico_path = Path(tempfile.gettempdir()) / "bline_icon.ico"
+            # Store in a stable user location (temp dirs can be cleaned).
+            ico_dir = Path.home() / ".bline"
+            ico_dir.mkdir(parents=True, exist_ok=True)
+            ico_path = ico_dir / "bline_icon.ico"
             # Generate an .ico using Qt (no extra deps).
             from PySide6.QtGui import QImage
 
@@ -205,6 +207,44 @@ def create_macos_app_bundle(
         "",
     ]
     plist.write_text("\n".join(plist_lines), encoding="utf-8")
+
+
+def create_windows_lnk(
+    *,
+    shortcut_path: Path,
+    target_path: str,
+    arguments: str,
+    working_dir: str | None,
+    icon_path: str | None,
+) -> None:
+    """Create a Windows .lnk shortcut via PowerShell (WScript.Shell COM)."""
+    import subprocess
+
+    shortcut_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # PowerShell-escape single quotes by doubling them.
+    def ps_str(s: str) -> str:
+        return "'" + s.replace("'", "''") + "'"
+
+    ps_lines = [
+        "$WshShell = New-Object -ComObject WScript.Shell",
+        f"$Shortcut = $WshShell.CreateShortcut({ps_str(str(shortcut_path))})",
+        f"$Shortcut.TargetPath = {ps_str(target_path)}",
+        f"$Shortcut.Arguments = {ps_str(arguments)}",
+    ]
+    if working_dir:
+        ps_lines.append(f"$Shortcut.WorkingDirectory = {ps_str(working_dir)}")
+    if icon_path:
+        # IconLocation supports 'path, index'
+        ps_lines.append(f"$Shortcut.IconLocation = {ps_str(icon_path + ',0')}")
+    ps_lines.append("$Shortcut.Save()")
+
+    subprocess.run(
+        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "\n".join(ps_lines)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
 
 
 def create_shortcut_dialog() -> int:
@@ -332,26 +372,36 @@ def create_shortcut_dialog() -> int:
                         icns_path=icon,
                     )
             else:
-                # Windows/Linux: rely on pyshortcuts
+                # Windows/Linux shortcut creation
                 if system == "Windows":
-                    # On Windows, avoid relying on the `bline` launcher (console vs gui-script wrappers can vary
-                    # under pipx). Instead, point the shortcut directly at pythonw.exe in the current venv and
-                    # run the installed module.
+                    # On Windows, create .lnk shortcuts directly. This avoids terminals and avoids PATH issues.
                     python_exe = Path(sys.executable)
                     pythonw_exe = python_exe.with_name("pythonw.exe")
                     exe = str(pythonw_exe if pythonw_exe.exists() else python_exe)
-                    cmd = f"\"{exe}\" -m main"
-                    make_shortcut(
-                        script=cmd,
-                        name="BLine",
-                        description="FRC Robot Path Planning Tool",
-                        icon=icon,
-                        desktop=desktop_cb.isChecked(),
-                        startmenu=startmenu_checked,
-                        terminal=False,
-                        noexe=True,
-                    )
+                    args = "-m main"
+
+                    userprofile = os.environ.get("USERPROFILE") or str(Path.home())
+                    desktop_dir = Path(os.environ.get("USERPROFILE", userprofile)) / "Desktop"
+                    startmenu_dir = Path(os.environ.get("APPDATA", userprofile)) / "Microsoft" / "Windows" / "Start Menu" / "Programs"
+
+                    if desktop_cb.isChecked():
+                        create_windows_lnk(
+                            shortcut_path=desktop_dir / "BLine.lnk",
+                            target_path=exe,
+                            arguments=args,
+                            working_dir=userprofile,
+                            icon_path=icon,
+                        )
+                    if startmenu_checked:
+                        create_windows_lnk(
+                            shortcut_path=startmenu_dir / "BLine.lnk",
+                            target_path=exe,
+                            arguments=args,
+                            working_dir=userprofile,
+                            icon_path=icon,
+                        )
                 else:
+                    # Linux: rely on pyshortcuts
                     make_shortcut(
                         script=bline_cmd,
                         name="BLine",
