@@ -17,8 +17,6 @@ dependencies = [
 
 [project.scripts]
 bline = "main:main"
-# Console entrypoint (useful for debugging)
-bline-cli = "main:main"
 
 [project.optional-dependencies]
 dev = [
