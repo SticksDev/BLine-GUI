@@ -236,7 +236,7 @@ def create_shortcut_dialog() -> int:
     layout.addWidget(desktop_cb)
 
     if platform.system() == "Darwin":
-        startmenu_text = "Applications folder"
+        startmenu_text = "Applications (/Applications)"
     elif platform.system() == "Windows":
         startmenu_text = "Start Menu"
     else:
@@ -292,8 +292,14 @@ def create_shortcut_dialog() -> int:
                         icns_path=icon,
                     )
                 if startmenu_cb.isChecked():
-                    apps_dir = Path.home() / "Applications"
-                    apps_dir.mkdir(parents=True, exist_ok=True)
+                    # Prefer the global /Applications (what users see in Finder sidebar).
+                    # If we can't write there, fall back to ~/Applications.
+                    system_apps_dir = Path("/Applications")
+                    if system_apps_dir.exists() and os.access(system_apps_dir, os.W_OK):
+                        apps_dir = system_apps_dir
+                    else:
+                        apps_dir = Path.home() / "Applications"
+                        apps_dir.mkdir(parents=True, exist_ok=True)
                     create_macos_app_bundle(
                         app_dir=apps_dir,
                         app_name="BLine",
