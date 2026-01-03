@@ -67,6 +67,3 @@ files = ["models", "utils", "scripts", "tests"]
 [tool.pytest.ini_options]
 addopts = "-ra"
 testpaths = ["tests"]
-
-[tool.pyside6-project]
-# Configuration is provided via pysidedeploy.spec
