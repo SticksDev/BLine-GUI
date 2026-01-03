@@ -247,6 +247,57 @@ def create_windows_lnk(
     )
 
 
+def get_windows_known_folder(folder: str) -> Path:
+    """Return a Windows known folder path.
+
+    folder:
+      - 'Desktop'
+      - 'Programs' (Start Menu\\Programs)
+    """
+    import ctypes
+    from ctypes import wintypes
+    import uuid
+
+    # GUIDs from Microsoft KNOWNFOLDERID
+    folder_ids: dict[str, str] = {
+        "Desktop": "{B4BFCC3A-DB2C-424C-B029-7FE99A87C641}",  # FOLDERID_Desktop
+        "Programs": "{A77F5D77-2E2B-44C3-A6A2-ABA601054A51}",  # FOLDERID_Programs
+    }
+    if folder not in folder_ids:
+        raise ValueError(f"Unknown folder: {folder}")
+
+    class GUID(ctypes.Structure):
+        _fields_ = [
+            ("Data1", wintypes.DWORD),
+            ("Data2", wintypes.WORD),
+            ("Data3", wintypes.WORD),
+            ("Data4", wintypes.BYTE * 8),
+        ]
+
+    def guid_from_str(s: str) -> GUID:
+        u = uuid.UUID(s)
+        data4 = (wintypes.BYTE * 8).from_buffer_copy(u.bytes[8:])
+        return GUID(u.time_low, u.time_mid, u.time_hi_version, data4)
+
+    SHGetKnownFolderPath = ctypes.windll.shell32.SHGetKnownFolderPath
+    SHGetKnownFolderPath.argtypes = [ctypes.POINTER(GUID), wintypes.DWORD, wintypes.HANDLE, ctypes.POINTER(ctypes.c_wchar_p)]
+    SHGetKnownFolderPath.restype = wintypes.HRESULT
+
+    CoTaskMemFree = ctypes.windll.ole32.CoTaskMemFree
+    CoTaskMemFree.argtypes = [wintypes.LPVOID]
+    CoTaskMemFree.restype = None
+
+    fid = guid_from_str(folder_ids[folder])
+    ppath = ctypes.c_wchar_p()
+    hr = SHGetKnownFolderPath(ctypes.byref(fid), 0, 0, ctypes.byref(ppath))
+    if hr != 0:
+        raise OSError(f"SHGetKnownFolderPath failed for {folder}: HRESULT={hr}")
+    try:
+        return Path(ppath.value)
+    finally:
+        CoTaskMemFree(ppath)
+
+
 def create_shortcut_dialog() -> int:
     """Show a dialog to create desktop/start menu shortcuts."""
     try:
@@ -380,26 +431,31 @@ def create_shortcut_dialog() -> int:
                     exe = str(pythonw_exe if pythonw_exe.exists() else python_exe)
                     args = "-m main"
 
-                    userprofile = os.environ.get("USERPROFILE") or str(Path.home())
-                    desktop_dir = Path(os.environ.get("USERPROFILE", userprofile)) / "Desktop"
-                    startmenu_dir = Path(os.environ.get("APPDATA", userprofile)) / "Microsoft" / "Windows" / "Start Menu" / "Programs"
+                    # Use known folders (handles OneDrive redirected Desktops, localization, etc.)
+                    desktop_dir = get_windows_known_folder("Desktop")
+                    startmenu_dir = get_windows_known_folder("Programs")
 
+                    created_paths: list[str] = []
                     if desktop_cb.isChecked():
+                        dest = desktop_dir / "BLine.lnk"
                         create_windows_lnk(
-                            shortcut_path=desktop_dir / "BLine.lnk",
+                            shortcut_path=dest,
                             target_path=exe,
                             arguments=args,
-                            working_dir=userprofile,
+                            working_dir=str(Path.home()),
                             icon_path=icon,
                         )
+                        created_paths.append(str(dest))
                     if startmenu_checked:
+                        dest = startmenu_dir / "BLine.lnk"
                         create_windows_lnk(
-                            shortcut_path=startmenu_dir / "BLine.lnk",
+                            shortcut_path=dest,
                             target_path=exe,
                             arguments=args,
-                            working_dir=userprofile,
+                            working_dir=str(Path.home()),
                             icon_path=icon,
                         )
+                        created_paths.append(str(dest))
                 else:
                     # Linux: rely on pyshortcuts
                     make_shortcut(
@@ -419,6 +475,12 @@ def create_shortcut_dialog() -> int:
                 locations.append(startmenu_text)
             
             message = f"Shortcut created in: {', '.join(locations)}"
+            if system == "Windows":
+                # Show exact file paths so users can verify where it went.
+                try:
+                    message += "\n\nCreated:\n" + "\n".join(created_paths)
+                except Exception:
+                    pass
             QMessageBox.information(dialog, "Success", message)
             dialog.accept()
         except Exception as e:
