@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import faulthandler
+import os
 import sys
 from pathlib import Path
 from typing import Sequence
@@ -111,6 +112,86 @@ def get_icon_for_shortcut() -> str | None:
         return str(png_path)
 
 
+def find_bline_command() -> str | None:
+    """Find the installed `bline` command (pipx or pip)."""
+    import shutil
+
+    bline_cmd = shutil.which("bline")
+    if bline_cmd:
+        return bline_cmd
+
+    # Common pipx location on macOS/Linux
+    pipx_bin = Path.home() / ".local" / "bin" / "bline"
+    if pipx_bin.exists():
+        return str(pipx_bin)
+
+    return None
+
+
+def create_macos_app_bundle(
+    *,
+    app_dir: Path,
+    app_name: str,
+    launch_cmd: str,
+    icns_path: str | None,
+) -> None:
+    """Create a minimal macOS .app bundle that runs `launch_cmd`."""
+    import shutil
+
+    bundle = app_dir / f"{app_name}.app"
+    contents = bundle / "Contents"
+    macos_dir = contents / "MacOS"
+    resources_dir = contents / "Resources"
+
+    if bundle.exists():
+        shutil.rmtree(bundle)
+
+    resources_dir.mkdir(parents=True, exist_ok=True)
+    macos_dir.mkdir(parents=True, exist_ok=True)
+
+    # Launcher script
+    launcher = macos_dir / app_name
+    launcher.write_text(
+        "#!/bin/sh\n"
+        "set -e\n"
+        f"exec {launch_cmd} \"$@\"\n",
+        encoding="utf-8",
+    )
+    os.chmod(launcher, 0o755)
+
+    icon_file = None
+    if icns_path:
+        src = Path(icns_path)
+        if src.exists() and src.suffix.lower() == ".icns":
+            icon_file = f"{app_name}.icns"
+            shutil.copyfile(src, resources_dir / icon_file)
+
+    # Info.plist
+    plist = contents / "Info.plist"
+    plist_lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
+        '<plist version="1.0">',
+        "  <dict>",
+        "    <key>CFBundleDevelopmentRegion</key><string>en</string>",
+        "    <key>CFBundleExecutable</key><string>%s</string>" % app_name,
+        "    <key>CFBundleIdentifier</key><string>com.bline.gui</string>",
+        "    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>",
+        "    <key>CFBundleName</key><string>%s</string>" % app_name,
+        "    <key>CFBundlePackageType</key><string>APPL</string>",
+        "    <key>CFBundleShortVersionString</key><string>0.1.0</string>",
+        "    <key>CFBundleVersion</key><string>0.1.0</string>",
+    ]
+    if icon_file:
+        plist_lines.append("    <key>CFBundleIconFile</key><string>%s</string>" % icon_file)
+    plist_lines += [
+        "  </dict>",
+        "</plist>",
+        "",
+    ]
+    plist.write_text("\n".join(plist_lines), encoding="utf-8")
+
+
 def create_shortcut_dialog() -> int:
     """Show a dialog to create desktop/start menu shortcuts."""
     try:
@@ -155,7 +236,7 @@ def create_shortcut_dialog() -> int:
     layout.addWidget(desktop_cb)
 
     if platform.system() == "Darwin":
-        startmenu_text = "~/Applications folder"
+        startmenu_text = "Applications folder"
     elif platform.system() == "Windows":
         startmenu_text = "Start Menu"
     else:
@@ -187,19 +268,7 @@ def create_shortcut_dialog() -> int:
             return
 
         try:
-            # Get the icon in the correct format for this platform
-            icon = get_icon_for_shortcut()
-            
-            # Find the bline command - check common locations
-            import shutil
-            bline_cmd = shutil.which("bline")
-            
-            if not bline_cmd:
-                # Check pipx location explicitly
-                pipx_bin = Path.home() / ".local" / "bin" / "bline"
-                if pipx_bin.exists():
-                    bline_cmd = str(pipx_bin)
-            
+            bline_cmd = find_bline_command()
             if not bline_cmd:
                 QMessageBox.critical(
                     dialog,
@@ -207,17 +276,41 @@ def create_shortcut_dialog() -> int:
                     "BLine is not installed. Please install with:\n\npipx install bline"
                 )
                 return
-            
-            # Create the shortcut with the full path
-            make_shortcut(
-                script=bline_cmd,
-                name="BLine",
-                description="FRC Robot Path Planning Tool",
-                icon=icon,
-                desktop=desktop_cb.isChecked(),
-                startmenu=startmenu_cb.isChecked(),
-                terminal=False,
-            )
+
+            system = platform.system()
+            icon = get_icon_for_shortcut()
+
+            # macOS: pyshortcuts only creates Desktop .app bundles and does not support "Start Menu/Applications".
+            # Create real .app bundles ourselves for Desktop and/or ~/Applications.
+            if system == "Darwin":
+                launch_cmd = f"\"{bline_cmd}\""
+                if desktop_cb.isChecked():
+                    create_macos_app_bundle(
+                        app_dir=Path.home() / "Desktop",
+                        app_name="BLine",
+                        launch_cmd=launch_cmd,
+                        icns_path=icon,
+                    )
+                if startmenu_cb.isChecked():
+                    apps_dir = Path.home() / "Applications"
+                    apps_dir.mkdir(parents=True, exist_ok=True)
+                    create_macos_app_bundle(
+                        app_dir=apps_dir,
+                        app_name="BLine",
+                        launch_cmd=launch_cmd,
+                        icns_path=icon,
+                    )
+            else:
+                # Windows/Linux: rely on pyshortcuts
+                make_shortcut(
+                    script=bline_cmd,
+                    name="BLine",
+                    description="FRC Robot Path Planning Tool",
+                    icon=icon,
+                    desktop=desktop_cb.isChecked(),
+                    startmenu=startmenu_cb.isChecked(),
+                    terminal=False,
+                )
             
             locations = []
             if desktop_cb.isChecked():
