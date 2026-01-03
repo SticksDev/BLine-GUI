@@ -1,51 +1,17 @@
 # BLine-GUI
-Check out 🔧 **[BLine-Lib](https://github.com/edanliahovetsky/BLine-Lib)** for conceptual documentation and general overview.
+Check out **[BLine-Lib](https://github.com/edanliahovetsky/BLine-Lib)** for conceptual documentation and a general overview.
 
 An editor and simulator for tuning BLine paths, built with PySide6.
 
+## Quick start
+
+After installation, run from anywhere:
+
+```bash
+bline
+```
+
 ## Installation
-
-### macOS
-
-#### Option A: Using Homebrew (Recommended)
-
-If you don't have Homebrew, install it first:
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
-
-Then install BLine:
-```bash
-# Install pipx (one-time setup)
-brew install pipx
-pipx ensurepath
-
-# Restart your terminal, then install BLine
-pipx install git+https://github.com/edanliahovetsky/BLine-GUI.git
-```
-
-#### Option B: Using pip (No Homebrew)
-
-```bash
-# Create a folder for BLine
-mkdir -p ~/Applications/BLine
-cd ~/Applications/BLine
-
-# Create a virtual environment and install
-python3 -m venv .venv
-source .venv/bin/activate
-pip install git+https://github.com/edanliahovetsky/BLine-GUI.git
-
-# Run BLine (from this folder, with venv activated)
-bline
-```
-
-To run BLine later with this method:
-```bash
-cd ~/Applications/BLine
-source .venv/bin/activate
-bline
-```
 
 ### Windows
 
@@ -91,6 +57,47 @@ To run BLine later with this method:
 ```powershell
 cd %USERPROFILE%\BLine
 .venv\Scripts\activate
+bline
+```
+### macOS
+
+#### Option A: Using Homebrew (Recommended)
+
+If you don't have Homebrew, install it first:
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+Then install BLine:
+```bash
+# Install pipx (one-time setup)
+brew install pipx
+pipx ensurepath
+
+# Restart your terminal, then install BLine
+pipx install git+https://github.com/edanliahovetsky/BLine-GUI.git
+```
+
+#### Option B: Using pip (No Homebrew)
+
+```bash
+# Create a folder for BLine
+mkdir -p ~/Applications/BLine
+cd ~/Applications/BLine
+
+# Create a virtual environment and install
+python3 -m venv .venv
+source .venv/bin/activate
+pip install git+https://github.com/edanliahovetsky/BLine-GUI.git
+
+# Run BLine (from this folder, with venv activated)
+bline
+```
+
+To run BLine later with this method:
+```bash
+cd ~/Applications/BLine
+source .venv/bin/activate
 bline
 ```
 
@@ -148,12 +155,6 @@ bline
 
 ## Usage
 
-After installation, run BLine from anywhere:
-
-```bash
-bline
-```
-
 ### Create a Desktop Shortcut
 
 To create a desktop shortcut with the BLine icon:
@@ -174,6 +175,18 @@ pipx upgrade bline
 
 # If you used pip (with venv activated):
 pip install --upgrade git+https://github.com/edanliahovetsky/BLine-GUI.git
+```
+
+**If `pipx upgrade bline` fails on Windows:** this can happen if pipx is pointing at a moved/updated Python install.
+Try one of these:
+
+```powershell
+# Recreate the pipx venv for bline
+pipx reinstall bline
+
+# Or remove + install fresh
+pipx uninstall bline
+pipx install git+https://github.com/edanliahovetsky/BLine-GUI.git
 ```
 
 ### Uninstalling
