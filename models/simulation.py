@@ -23,7 +23,6 @@ from typing import Dict, List, Optional, Tuple
 
 from models.path_model import (
     Path,
-    PathElement,
     RotationTarget,
     TranslationTarget,
     Waypoint,
@@ -360,51 +359,6 @@ def _desired_heading_for_global_s(
     return th_last, 0.0, profiled_last
 
 
-def _desired_heading_for_progress(
-    seg: _Segment,
-    progress_t: float,
-    start_heading: float,
-) -> Tuple[float, float, bool]:
-    t = 0.0 if progress_t < 0.0 else 1.0 if progress_t > 1.0 else progress_t
-
-    if not seg.keyframes:
-        return start_heading, 0.0, True
-
-    frames: List[Tuple[float, float, bool]] = []
-    if seg.keyframes[0].t_ratio > 0.0 + 1e-9:
-        frames.append((0.0, start_heading, True))
-    for kf in seg.keyframes:
-        frames.append((kf.t_ratio, kf.theta_target, kf.profiled_rotation))
-
-    for i in range(len(frames) - 1):
-        t0, th0, profiled0 = frames[i]
-        t1, th1, profiled1 = frames[i + 1]
-        if t <= t0 + 1e-12:
-            # Exactly at this keyframe: hold its heading; do not pre-snap ahead
-            if abs(t - t0) <= 1e-12:
-                delta = shortest_angular_distance(th1, th0)
-                dtheta_ds = delta / max((t1 - t0) * max(seg.length_m, 1e-9), 1e-9)
-                return th0, dtheta_ds, profiled1
-            # Before this keyframe: hold current heading; do not pre-snap
-            delta = shortest_angular_distance(th1, th0)
-            dtheta_ds = delta / max((t1 - t0) * max(seg.length_m, 1e-9), 1e-9)
-            return th0, dtheta_ds, profiled1
-        if t0 < t <= t1 + 1e-12:
-            if not profiled1:
-                return th1, 0.0, profiled1
-            alpha = (t - t0) / max((t1 - t0), 1e-9)
-            delta = shortest_angular_distance(th1, th0)
-            desired_theta = wrap_angle_radians(th0 + delta * alpha)
-            dtheta_ds = delta / max((t1 - t0) * max(seg.length_m, 1e-9), 1e-9)
-            return desired_theta, dtheta_ds, profiled1
-
-    t_last, th_last, profiled_last = frames[-1]
-    # If the final keyframe is non-profiled, just hold that target
-    if not profiled_last:
-        return th_last, 0.0, profiled_last
-    return th_last, 0.0, profiled_last
-
-
 def _resolve_constraint(value: Optional[float], fallback: Optional[float], default: float) -> float:
     try:
         if value is not None and float(value) > 0.0:
@@ -699,8 +653,6 @@ def simulate_path(
     guard_time = max(3.0, 2.0 * est_trans_time + 1.5 * est_rot_time)
 
     while t_s <= guard_time:
-        if 0.2 < t_s < 0.3:
-             print(f"DEBUG TOP: t={t_s:.3f} speeds_omega={speeds.omega_radps:.3f}")
         if seg_idx >= len(segments):
             break
 
@@ -749,16 +701,11 @@ def simulate_path(
             ux = 1.0
             uy = 0.0
 
-        progress_t = projected_s / seg.length_m if seg.length_m > 1e-9 else 0.0
-
         # Compute desired heading using global keyframes at absolute distance along path
         global_s = cumulative_lengths[seg_idx] + projected_s
-        desired_theta, dtheta_ds, profiled_rotation = _desired_heading_for_global_s(
+        desired_theta, _, _ = _desired_heading_for_global_s(
             global_keyframes, global_s, start_heading_base
         )
-
-        v_proj = dot(speeds.vx_mps, speeds.vy_mps, ux, uy)
-        v_curr = max(v_proj, 0.0)
 
         remaining = remaining_distance_from(seg_idx, x, y, projected_s)
 
@@ -791,17 +738,10 @@ def simulate_path(
             else float(base_max_alpha)
         )
 
-        # Decouple translation from rotation entirely
-        max_v_dyn = max_v
-        max_a_dyn = max_a
-
-        max_a_mag = min(max_a, max_a_dyn)
-
         # 2ad controller: drive remaining distance to zero
         v_p_control = math.sqrt(2.0 * base_max_a * remaining)
-        # First cap by velocity limit; leave acceleration limiting to the limiter below
-        unconstrained_v_des = min(max_v, max_v_dyn, v_p_control)
-        v_des_scalar = max(0.0, unconstrained_v_des)
+        # Cap by velocity limit; leave acceleration limiting to the limiter below
+        v_des_scalar = max(0.0, min(max_v, v_p_control))
         # If on the final segment and desired velocity collapses to ~0 while still away from the endpoint,
         # nudge toward the endpoint by requesting just enough velocity to reach it within one dt (bounded by max_v).
         if seg_idx == len(segments) - 1 and v_des_scalar <= 1e-9 and dist_to_target > _EPS_POS:
@@ -810,12 +750,8 @@ def simulate_path(
         vx_des = v_des_scalar * ux
         vy_des = v_des_scalar * uy
 
-        # ROTATION CONTROL: 2ad-style control matching translation approach
-        # Use desired_theta from global keyframes as the rotation target
-        rotation_target_theta = desired_theta
-        angular_error = shortest_angular_distance(rotation_target_theta, theta)
-
         # 2ad controller for rotation: omega = sqrt(2 * alpha * |error|)
+        angular_error = shortest_angular_distance(desired_theta, theta)
         omega_control = math.sqrt(2.0 * max_alpha * abs(angular_error))
         # Cap by max_omega and apply sign based on error direction
         omega_des = min(omega_control, max_omega)
@@ -830,8 +766,6 @@ def simulate_path(
             max_trans_accel_mps2=max_a,
             max_angular_accel_radps2=max_alpha,
         )
-        if 0.4 < projected_s < 0.6 and seg_idx == 0:
-             print(f"DEBUG: s={projected_s:.3f} des={desired_theta:.3f} err={angular_error:.3f} o_des={omega_des:.3f} o_lim={limited.omega_radps:.3f} theta={theta:.3f}")
         if abs(limited.omega_radps) > max_omega > 0.0:
             limited = ChassisSpeeds(
                 limited.vx_mps, limited.vy_mps, math.copysign(max_omega, limited.omega_radps)

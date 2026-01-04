@@ -232,7 +232,7 @@ Toggle this setting per-element in the sidebar under "Profiled Rotation".
 
 Each translation element (Waypoint or TranslationTarget) has an **intermediate handoff radius**—the distance at which the path follower advances to the next target. On the canvas, this is visualized as a **magenta dashed circle** around the element.
 
-- **Smaller radius** → Robot waits longer before switching targets. Better precision at waypoints, but can cause hesitation.
+- **Smaller radius** → Robot waits longer before switching targets. Better precision at waypoints, but can cause hesitation. If the radius is too small, the robot may overshoot and miss the handoff zone entirely—this is the worst case scenario and will cause erratic path behavior at high robot velocities.
 - **Larger radius** → Robot switches sooner. Smoother transitions at speed, but may cut corners.
 
 Set per-element radii in the sidebar, or configure a project-wide default in **Settings → Robot Config**.
