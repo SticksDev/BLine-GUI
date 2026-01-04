@@ -297,6 +297,14 @@ def _desired_heading_for_global_s(
 ) -> Tuple[float, float, bool]:
     """Compute desired heading and dtheta/ds at absolute path distance s_m.
 
+    IMPORTANT:
+    - For profiled rotation, the desired heading is an interpolated setpoint
+      between successive rotation events, parameterized by completion ratio
+      along path distance (s). The controller still uses 2ad-style dynamics to
+      compute omega from angular error and applies angular acceleration limiting.
+    - For non-profiled rotation, the desired heading steps immediately to the
+      next event's target (no interpolation).
+
     Returns (desired_theta, dtheta_ds, profiled_rotation_for_interval).
     """
     if not global_frames:
@@ -312,23 +320,20 @@ def _desired_heading_for_global_s(
     for i in range(len(frames) - 1):
         s0, th0, profiled0 = frames[i]
         s1, th1, profiled1 = frames[i + 1]
+        # Before (or exactly at) this keyframe: hold its heading; no pre-snap.
         if s_m <= s0 + 1e-12:
-            # Exactly at this keyframe: hold its heading; do not pre-snap ahead
-            if abs(s_m - s0) <= 1e-12:
-                delta = shortest_angular_distance(th1, th0)
-                dtheta_ds = delta / max((s1 - s0), 1e-9)
-                return th0, dtheta_ds, profiled1
-            # Before the keyframe: continue holding current heading; no pre-snap
             delta = shortest_angular_distance(th1, th0)
             dtheta_ds = delta / max((s1 - s0), 1e-9)
             return th0, dtheta_ds, profiled1
+
+        # Within this interval: either interpolate (profiled) or step (non-profiled).
         if s0 < s_m <= s1 + 1e-12:
+            delta = shortest_angular_distance(th1, th0)
+            dtheta_ds = delta / max((s1 - s0), 1e-9)
             if not profiled1:
                 return th1, 0.0, profiled1
             alpha = (s_m - s0) / max((s1 - s0), 1e-9)
-            delta = shortest_angular_distance(th1, th0)
             desired_theta = wrap_angle_radians(th0 + delta * alpha)
-            dtheta_ds = delta / max((s1 - s0), 1e-9)
             return desired_theta, dtheta_ds, profiled1
 
     # After the last frame, hold
@@ -657,6 +662,8 @@ def simulate_path(
     guard_time = max(3.0, 2.0 * est_trans_time + 1.5 * est_rot_time)
 
     while t_s <= guard_time:
+        if 0.2 < t_s < 0.3:
+             print(f"DEBUG TOP: t={t_s:.3f} speeds_omega={speeds.omega_radps:.3f}")
         if seg_idx >= len(segments):
             break
 
@@ -786,6 +793,8 @@ def simulate_path(
             max_trans_accel_mps2=max_a,
             max_angular_accel_radps2=max_alpha,
         )
+        if 0.4 < projected_s < 0.6 and seg_idx == 0:
+             print(f"DEBUG: s={projected_s:.3f} des={desired_theta:.3f} err={angular_error:.3f} o_des={omega_des:.3f} o_lim={limited.omega_radps:.3f} theta={theta:.3f}")
         if abs(limited.omega_radps) > max_omega > 0.0:
             limited = ChassisSpeeds(
                 limited.vx_mps, limited.vy_mps, math.copysign(max_omega, limited.omega_radps)
@@ -831,7 +840,11 @@ def simulate_path(
                 y = end_y
                 dist_to_final = 0.0
                 snapped_pos = True
-            if rot_err <= _EPS_ANG:
+
+            # Only check rotation snapping if we are close to the end point
+            # to avoid premature snapping when start/end headings match but
+            # intermediate rotation is required (e.g. W -> R -> W)
+            if dist_to_final < 0.1 and rot_err <= _EPS_ANG:
                 theta = end_heading_target
                 rot_err = 0.0
                 snapped_rot = True
